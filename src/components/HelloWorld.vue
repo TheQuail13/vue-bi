@@ -34,7 +34,6 @@
           v-model="files"
           label="Drop an excel or CSV file here"
           filled
-          counter
           :counter-label="counterLabelFn"
           max-files="1"
           multiple
@@ -44,6 +43,14 @@
             <q-btn round dense flat icon="send" @click.prevent="processFile" />
           </template>
         </q-file>
+        <q-select
+          outlined
+          v-model="chartType"
+          :options="chartTypeOptions"
+          label="Select a chart type"
+          class="q-mt-md"
+          @input="setChartType"
+        />
       </div>
     </div>
     <div class="row justify-center">
@@ -53,12 +60,15 @@
       <div class="col q-px-lg">
         <apexchart
           width="100%"
-          type="bar"
+          :type="chartType"
           :options="graphOptions"
           :series="graphData"
         ></apexchart>
       </div>
     </div>
+    <q-inner-loading :showing="isLoading">
+      <q-spinner-grid size="125px" color="green" />
+    </q-inner-loading>
   </q-page>
 </template>
 
@@ -69,8 +79,11 @@ import { date } from "quasar";
 export default {
   data() {
     return {
+      isLoading: false,
       files: [],
       processedFile: "",
+      chartType: "line",
+      chartTypeOptions: ["line", "bar", "pie"],
       columnHeaders: [],
       columnData: [],
       tableData: [],
@@ -84,13 +97,15 @@ export default {
           categories: [],
         },
       },
+      graphSortOptions: {
+        column: "",
+        type: "asc",
+      },
       realData: [],
       droppedArray: [],
       xAxis: {},
-
       pagination: {
         rowsPerPage: 10,
-        rowsNumber: this.rowCount,
       },
     };
   },
@@ -99,10 +114,16 @@ export default {
       return `${totalSize}`;
     },
     groupSumBy(inputArray, xProperty, aggProp) {
-      return inputArray.reduce((accumulator, object) => {
+      const sortedArray = inputArray.sort((a, b) =>
+        a[xProperty.Name] > b[xProperty.Name]
+          ? 1
+          : b[xProperty.Name] > a[xProperty.Name]
+          ? -1
+          : 0
+      );
+
+      return sortedArray.reduce((accumulator, object) => {
         let key = object[xProperty.Name];
-        console.log("key", key);
-        console.log("typeof key", Object.prototype.toString.call(key));
 
         if (Object.prototype.toString.call(key) === "[object Date]") {
           key = date.formatDate(key, "YYYY-MM-DD");
@@ -120,6 +141,7 @@ export default {
       }, {});
     },
     processFile() {
+      this.isLoading = true;
       let f = this.files[0];
       let reader = new FileReader();
 
@@ -181,6 +203,8 @@ export default {
         this.tableData = tableData;
         this.columnHeaders = tArrCheck;
         this.columnData = dataArr;
+
+        this.isLoading = false;
       };
 
       reader.readAsArrayBuffer(f);
@@ -205,23 +229,41 @@ export default {
     },
     computeGraphData() {
       if (this.xAxis.Name && this.droppedArray.length > 0) {
+        this.isLoading = true;
         let raw = this.groupSumBy(
           this.realData,
           this.xAxis,
           this.droppedArray[this.droppedArray.length - 1].Name
         );
-        this.graphData = [
-          {
-            data: Object.values(raw),
-          },
-        ];
 
-        this.graphOptions = {
-          xaxis: {
-            categories: Object.keys(raw),
-          },
-        };
+        if (this.chartType === "pie") {
+          this.graphData = null;
+          this.graphData = Object.values(raw);
+        } else {
+          this.graphData = [
+            {
+              data: Object.values(raw),
+            },
+          ];
+        }
+
+        if (this.chartType === "pie") {
+          this.graphOptions = null;
+          this.graphOptions = {
+            labels: Object.keys(raw),
+          };
+        } else {
+          this.graphOptions = {
+            xaxis: {
+              categories: Object.keys(raw),
+            },
+          };
+        }
+        this.isLoading = false;
       }
+    },
+    setChartType() {
+      this.computeGraphData();
     },
   },
   computed: {},
