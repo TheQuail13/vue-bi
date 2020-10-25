@@ -1,58 +1,257 @@
 <template>
-  <div class="hello">
-    <h1>{{ msg }}</h1>
-    <p>
-      For a guide and recipes on how to configure / customize this project,<br>
-      check out the
-      <a href="https://cli.vuejs.org" target="_blank" rel="noopener">vue-cli documentation</a>.
-    </p>
-    <h3>Installed CLI Plugins</h3>
-    <ul>
-      <li><a href="https://github.com/vuejs/vue-cli/tree/dev/packages/%40vue/cli-plugin-babel" target="_blank" rel="noopener">babel</a></li>
-      <li><a href="https://github.com/vuejs/vue-cli/tree/dev/packages/%40vue/cli-plugin-eslint" target="_blank" rel="noopener">eslint</a></li>
-    </ul>
-    <h3>Essential Links</h3>
-    <ul>
-      <li><a href="https://vuejs.org" target="_blank" rel="noopener">Core Docs</a></li>
-      <li><a href="https://forum.vuejs.org" target="_blank" rel="noopener">Forum</a></li>
-      <li><a href="https://chat.vuejs.org" target="_blank" rel="noopener">Community Chat</a></li>
-      <li><a href="https://twitter.com/vuejs" target="_blank" rel="noopener">Twitter</a></li>
-      <li><a href="https://news.vuejs.org" target="_blank" rel="noopener">News</a></li>
-    </ul>
-    <h3>Ecosystem</h3>
-    <ul>
-      <li><a href="https://router.vuejs.org" target="_blank" rel="noopener">vue-router</a></li>
-      <li><a href="https://vuex.vuejs.org" target="_blank" rel="noopener">vuex</a></li>
-      <li><a href="https://github.com/vuejs/vue-devtools#vue-devtools" target="_blank" rel="noopener">vue-devtools</a></li>
-      <li><a href="https://vue-loader.vuejs.org" target="_blank" rel="noopener">vue-loader</a></li>
-      <li><a href="https://github.com/vuejs/awesome-vue" target="_blank" rel="noopener">awesome-vue</a></li>
-    </ul>
-  </div>
+  <q-page padding class="main-page">
+    <div class="row justify-center q-mb-lg">
+      <div class="col-2 q-px-lg">
+        <q-list bordered>
+          <q-virtual-scroll style="max-height: 300px;" :items="columnHeaders" separator>
+            <template v-slot="{ item, index }">
+              <drag style="cursor: move;" :transfer-data="{ item }">
+                <q-item :key="index" bordered clickable>
+                  <q-item-section>
+                    <q-item-label>
+                      <q-icon :name="getIcon(item.Type)" /> {{ item.Name }}
+                    </q-item-label>
+                  </q-item-section>
+                </q-item>
+              </drag>
+            </template>
+          </q-virtual-scroll>
+        </q-list>
+      </div>
+      <div class="col-4 q-px-lg">
+        <drop class="drop q-mr-md" @drop="handleXDrop">X-Axis</drop>
+        <drop class="drop" @drop="handleYDrop">Series</drop>
+        {{ xAxis.Name }}
+        <q-list bordered separator class="q-mt-md">
+          <q-item v-for="(itm, idx) in droppedArray" :key="idx">
+            {{ itm.Name }}
+            <q-icon name="close" />
+          </q-item>
+        </q-list>
+      </div>
+      <div class="col q-px-lg">
+        <q-file
+          v-model="files"
+          label="Drop an excel or CSV file here"
+          filled
+          counter
+          :counter-label="counterLabelFn"
+          max-files="1"
+          multiple
+          clearable
+        >
+          <template v-slot:after>
+            <q-btn round dense flat icon="send" @click.prevent="processFile" />
+          </template>
+        </q-file>
+      </div>
+    </div>
+    <div class="row justify-center">
+      <div class="col q-px-lg">
+        <q-table title="Raw Data Preview" :data="tableData" :pagination="pagination" />
+      </div>
+      <div class="col q-px-lg">
+        <apexchart
+          width="100%"
+          type="bar"
+          :options="graphOptions"
+          :series="graphData"
+        ></apexchart>
+      </div>
+    </div>
+  </q-page>
 </template>
 
 <script>
+import XLSX from "xlsx";
+import { date } from "quasar";
+
 export default {
-  name: 'HelloWorld',
-  props: {
-    msg: String
-  }
-}
+  data() {
+    return {
+      files: [],
+      processedFile: "",
+      columnHeaders: [],
+      columnData: [],
+      tableData: [],
+      graphData: [
+        {
+          data: [],
+        },
+      ],
+      graphOptions: {
+        xaxis: {
+          categories: [],
+        },
+      },
+      realData: [],
+      droppedArray: [],
+      xAxis: {},
+
+      pagination: {
+        rowsPerPage: 10,
+        rowsNumber: this.rowCount,
+      },
+    };
+  },
+  methods: {
+    counterLabelFn({ totalSize }) {
+      return `${totalSize}`;
+    },
+    groupSumBy(inputArray, xProperty, aggProp) {
+      return inputArray.reduce((accumulator, object) => {
+        let key = object[xProperty.Name];
+        console.log("key", key);
+        console.log("typeof key", Object.prototype.toString.call(key));
+
+        if (Object.prototype.toString.call(key) === "[object Date]") {
+          key = date.formatDate(key, "YYYY-MM-DD");
+        }
+
+        if (!accumulator[key]) {
+          accumulator[key] =
+            typeof object[aggProp] === "undefined" || object[aggProp] === null
+              ? 0
+              : object[aggProp];
+        } else {
+          accumulator[key] += object[aggProp];
+        }
+        return accumulator;
+      }, {});
+    },
+    processFile() {
+      let f = this.files[0];
+      let reader = new FileReader();
+
+      reader.onload = (e) => {
+        let data = new Uint8Array(e.target.result);
+        let workbook = XLSX.read(data, {
+          type: "array",
+          cellDates: true,
+          cellText: false,
+          sheetStubs: true,
+        });
+
+        let sheetName = workbook.SheetNames[0];
+        let worksheet = workbook.Sheets[sheetName];
+
+        let baseData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        let headers = baseData[0];
+
+        let tableData = XLSX.utils.sheet_to_json(worksheet, {
+          header: 0,
+          raw: false, // only for table display
+          defval: "",
+        });
+
+        let realData = XLSX.utils.sheet_to_json(worksheet, {
+          header: 0,
+          blankrows: true,
+          defval: null,
+        });
+
+        let tArr = [];
+        let dataArr = [];
+        baseData.map((oRow, oIdx) => {
+          if (oIdx > 0) {
+            oRow.map((iRow, iIdx) => {
+              let t = Object.prototype.toString.call(iRow) === "[object Date]";
+              let ft = t === true ? "date" : typeof iRow;
+
+              if (typeof tArr[iIdx] === "undefined") {
+                tArr[iIdx] = [ft];
+                dataArr[iIdx] = [iRow];
+              } else {
+                tArr[iIdx].push(ft);
+                dataArr[iIdx].push(iRow);
+              }
+            });
+          }
+        });
+
+        let tArrCheck = tArr.map((row, rIdx) => ({
+          Name: typeof headers[rIdx] === "undefined" ? `Column${rIdx}` : headers[rIdx],
+          Type:
+            row.filter((v, i, a) => a.indexOf(v) === i).length > 1
+              ? "string"
+              : row.filter((v, i, a) => a.indexOf(v) === i)[0],
+        }));
+
+        this.realData = realData;
+        this.tableData = tableData;
+        this.columnHeaders = tArrCheck;
+        this.columnData = dataArr;
+      };
+
+      reader.readAsArrayBuffer(f);
+    },
+    getIcon(type) {
+      switch (type) {
+        case "date":
+          return "fas fa-calendar-alt";
+        case "number":
+          return "fas fa-superscript";
+        default:
+          return "fas fa-font";
+      }
+    },
+    handleXDrop(data) {
+      this.xAxis = data.item;
+    },
+    handleYDrop(data) {
+      this.droppedArray.length = 0;
+      this.droppedArray.push(data.item);
+      this.computeGraphData();
+    },
+    computeGraphData() {
+      if (this.xAxis.Name && this.droppedArray.length > 0) {
+        let raw = this.groupSumBy(
+          this.realData,
+          this.xAxis,
+          this.droppedArray[this.droppedArray.length - 1].Name
+        );
+        this.graphData = [
+          {
+            data: Object.values(raw),
+          },
+        ];
+
+        this.graphOptions = {
+          xaxis: {
+            categories: Object.keys(raw),
+          },
+        };
+      }
+    },
+  },
+  computed: {},
+};
 </script>
 
-<!-- Add "scoped" attribute to limit CSS to this component only -->
-<style scoped>
-h3 {
-  margin: 40px 0 0;
-}
-ul {
-  list-style-type: none;
-  padding: 0;
-}
-li {
+<style>
+.drag,
+.drop {
+  font-family: sans-serif;
   display: inline-block;
-  margin: 0 10px;
+  border-radius: 10px;
+  background: #ccc;
+  position: relative;
+  padding: 30px;
+  text-align: center;
+  vertical-align: top;
 }
-a {
-  color: #42b983;
+
+.drag {
+  color: #fff;
+  cursor: move;
+  background: #777;
+  border-right: 2px solid #555;
+  border-bottom: 2px solid #555;
+}
+
+.drop {
+  background: #eee;
+  border-top: 2px solid #ccc;
+  border-left: 2px solid #ccc;
 }
 </style>
