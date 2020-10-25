@@ -19,13 +19,20 @@
         </q-list>
       </div>
       <div class="col-4 q-px-lg">
-        <drop class="drop q-mr-md" @drop="handleXDrop">X-Axis</drop>
+        <drop class="drop q-mr-md" @drop="handleXDrop">{{
+          xAxis.Name ? xAxis.Name : "X-Axis"
+        }}</drop>
         <drop class="drop" @drop="handleYDrop">Series</drop>
-        {{ xAxis.Name }}
         <q-list bordered separator class="q-mt-md">
           <q-item v-for="(itm, idx) in droppedArray" :key="idx">
-            {{ itm.Name }}
-            <q-icon name="close" />
+            <q-item-section>{{ itm.Name }}</q-item-section>
+            <q-item-section side>
+              <q-icon
+                name="close"
+                @click="removeFromDropped(idx)"
+                style="cursor: pointer;"
+              />
+            </q-item-section>
           </q-item>
         </q-list>
       </div>
@@ -113,32 +120,30 @@ export default {
     counterLabelFn({ totalSize }) {
       return `${totalSize}`;
     },
-    groupSumBy(inputArray, xProperty, aggProp) {
+    groupSumBy(inputArray, xProp, yProps) {
       const sortedArray = inputArray.sort((a, b) =>
-        a[xProperty.Name] > b[xProperty.Name]
-          ? 1
-          : b[xProperty.Name] > a[xProperty.Name]
-          ? -1
-          : 0
+        a[xProp.Name] > b[xProp.Name] ? 1 : b[xProp.Name] > a[xProp.Name] ? -1 : 0
       );
 
-      return sortedArray.reduce((accumulator, object) => {
-        let key = object[xProperty.Name];
+      return yProps.map((itm) => {
+        return sortedArray.reduce((accumulator, object) => {
+          let key = object[xProp.Name];
 
-        if (Object.prototype.toString.call(key) === "[object Date]") {
-          key = date.formatDate(key, "YYYY-MM-DD");
-        }
+          if (Object.prototype.toString.call(key) === "[object Date]") {
+            key = date.formatDate(key, "YYYY-MM-DD");
+          }
 
-        if (!accumulator[key]) {
-          accumulator[key] =
-            typeof object[aggProp] === "undefined" || object[aggProp] === null
-              ? 0
-              : object[aggProp];
-        } else {
-          accumulator[key] += object[aggProp];
-        }
-        return accumulator;
-      }, {});
+          if (!accumulator[key]) {
+            accumulator[key] =
+              typeof object[itm.Name] === "undefined" || object[itm.Name] === null
+                ? 0
+                : object[itm.Name];
+          } else {
+            accumulator[key] += object[itm.Name];
+          }
+          return accumulator;
+        }, {});
+      });
     },
     processFile() {
       this.isLoading = true;
@@ -197,6 +202,7 @@ export default {
             row.filter((v, i, a) => a.indexOf(v) === i).length > 1
               ? "string"
               : row.filter((v, i, a) => a.indexOf(v) === i)[0],
+          Sort: "asc",
         }));
 
         this.realData = realData;
@@ -223,34 +229,34 @@ export default {
       this.xAxis = data.item;
     },
     handleYDrop(data) {
-      this.droppedArray.length = 0;
-      this.droppedArray.push(data.item);
-      this.computeGraphData();
+      if (!this.droppedArray.includes(data.item)) {
+        this.droppedArray.push(data.item);
+        this.computeGraphData();
+      }
     },
     computeGraphData() {
       if (this.xAxis.Name && this.droppedArray.length > 0) {
         this.isLoading = true;
-        let raw = this.groupSumBy(
-          this.realData,
-          this.xAxis,
-          this.droppedArray[this.droppedArray.length - 1].Name
-        );
+
+        if (this.chartType === "pie") {
+          this.droppedArray.splice(1);
+        }
+
+        let raw = this.groupSumBy(this.realData, this.xAxis, this.droppedArray);
 
         if (this.chartType === "pie") {
           this.graphData = null;
-          this.graphData = Object.values(raw);
+          this.graphData = Object.values(raw[0]);
         } else {
-          this.graphData = [
-            {
-              data: Object.values(raw),
-            },
-          ];
+          this.graphData = raw.map((itm) => ({
+            data: Object.values(itm),
+          }));
         }
 
         if (this.chartType === "pie") {
           this.graphOptions = null;
           this.graphOptions = {
-            labels: Object.keys(raw),
+            labels: Object.keys(raw[0]),
           };
         } else {
           this.graphOptions = {
@@ -263,6 +269,10 @@ export default {
       }
     },
     setChartType() {
+      this.computeGraphData();
+    },
+    removeFromDropped(idx) {
+      this.droppedArray.splice(idx, 1);
       this.computeGraphData();
     },
   },
@@ -281,6 +291,7 @@ export default {
   padding: 30px;
   text-align: center;
   vertical-align: top;
+  min-width: 45%;
 }
 
 .drag {
