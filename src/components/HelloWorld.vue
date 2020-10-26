@@ -304,6 +304,12 @@ export default {
                 return typeof val === "number" ? val.toLocaleString() : val;
               },
             },
+            tooltip: {
+              x: {
+                // show: true,
+                formatter: (x) => x.toLocaleString(),
+              },
+            },
           };
         }
         this.isLoading = false;
