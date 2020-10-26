@@ -91,7 +91,7 @@ export default {
       files: [],
       processedFile: "",
       chartType: "line",
-      chartTypeOptions: ["line", "bar", "pie"],
+      chartTypeOptions: ["line", "area", "bar", "pie", "polarArea"],
       columnHeaders: [],
       columnData: [],
       tableData: [],
@@ -260,7 +260,7 @@ export default {
 
         let raw = this.groupSumBy(this.realData, this.xAxis, this.droppedArray);
 
-        if (this.chartType === "pie") {
+        if (this.chartType === "pie" || this.chartType === "polarArea") {
           this.graphData = null;
           this.graphData = Object.values(raw[0]);
         } else {
@@ -270,7 +270,7 @@ export default {
           }));
         }
 
-        if (this.chartType === "pie") {
+        if (this.chartType === "pie" || this.chartType === "polarArea") {
           this.graphOptions = null;
           this.graphOptions = {
             labels: Object.keys(raw[0]),
