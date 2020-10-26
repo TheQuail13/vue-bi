@@ -67,7 +67,7 @@
       <div class="col q-px-lg">
         <apexchart
           height="750"
-          width="1250"
+          width="100%"
           :type="chartType"
           :options="graphOptions"
           :series="graphData"
@@ -108,6 +108,13 @@ export default {
         },
         xaxis: {
           categories: [],
+        },
+        yaxis: {
+          labels: {
+            formatter: (val) => {
+              return val.toLocaleString();
+            },
+          },
         },
       },
       graphSortOptions: {
@@ -275,11 +282,26 @@ export default {
                 enabled: true,
               },
             },
+            plotOptions: {
+              bar: {
+                // horizontal: true,
+                dataLabels: {
+                  position: "top",
+                },
+              },
+            },
             xaxis: {
               categories: Object.keys(raw[0]),
               labels: {
                 show: true,
                 rotate: -90,
+              },
+            },
+            dataLabels: {
+              enabled: true,
+              enabledOnSeries: undefined,
+              formatter(val) {
+                return typeof val === "number" ? val.toLocaleString() : val;
               },
             },
           };
