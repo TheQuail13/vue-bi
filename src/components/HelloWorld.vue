@@ -61,12 +61,13 @@
       </div>
     </div>
     <div class="row justify-center">
-      <div class="col q-px-lg">
+      <!-- <div class="col q-px-lg">
         <q-table title="Raw Data Preview" :data="tableData" :pagination="pagination" />
-      </div>
+      </div> -->
       <div class="col q-px-lg">
         <apexchart
-          width="100%"
+          height="750"
+          width="1250"
           :type="chartType"
           :options="graphOptions"
           :series="graphData"
@@ -100,6 +101,11 @@ export default {
         },
       ],
       graphOptions: {
+        chart: {
+          animations: {
+            enabled: false,
+          },
+        },
         xaxis: {
           categories: [],
         },
@@ -128,18 +134,21 @@ export default {
       return yProps.map((itm) => {
         return sortedArray.reduce((accumulator, object) => {
           let key = object[xProp.Name];
-
           if (Object.prototype.toString.call(key) === "[object Date]") {
             key = date.formatDate(key, "YYYY-MM-DD");
           }
 
           if (!accumulator[key]) {
-            accumulator[key] =
-              typeof object[itm.Name] === "undefined" || object[itm.Name] === null
-                ? 0
-                : object[itm.Name];
+            if (itm.Type === "string") {
+              accumulator[key] = 1;
+            } else {
+              accumulator[key] =
+                typeof object[itm.Name] === "undefined" || object[itm.Name] === null
+                  ? 0
+                  : object[itm.Name];
+            }
           } else {
-            accumulator[key] += object[itm.Name];
+            accumulator[key] += itm.Type === "string" ? 1 : object[itm.Name];
           }
           return accumulator;
         }, {});
@@ -248,8 +257,9 @@ export default {
           this.graphData = null;
           this.graphData = Object.values(raw[0]);
         } else {
-          this.graphData = raw.map((itm) => ({
+          this.graphData = raw.map((itm, idx) => ({
             data: Object.values(itm),
+            name: this.droppedArray[idx].Name,
           }));
         }
 
@@ -260,8 +270,17 @@ export default {
           };
         } else {
           this.graphOptions = {
+            chart: {
+              animations: {
+                enabled: true,
+              },
+            },
             xaxis: {
-              categories: Object.keys(raw),
+              categories: Object.keys(raw[0]),
+              labels: {
+                show: true,
+                rotate: -90,
+              },
             },
           };
         }
