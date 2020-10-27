@@ -22,35 +22,64 @@
         <drop class="drop q-mr-md" @drop="handleXDrop">{{
           xAxis.Name ? xAxis.Name : "X-Axis"
         }}</drop>
-        <drop class="drop" @drop="handleYDrop">Series</drop>
-        <q-list bordered separator class="q-mt-md">
-          <q-item v-for="(itm, idx) in droppedArray" :key="idx">
-            <q-item-section>{{ itm.Name }}</q-item-section>
-            <q-item-section>
-              <q-select
-                outlined
-                v-model="itm.AggType"
-                :options="aggOptions"
-                label="Select an aggregation type"
-                @input="computeGraphData"
-              />
-            </q-item-section>
-            <q-item-section side>
-              <q-icon
-                name="close"
-                @click="removeFromDropped(idx)"
-                style="cursor: pointer;"
-              />
-            </q-item-section>
-          </q-item>
-        </q-list>
+        <drop class="drop q-mr-md" @drop="handleYDrop">Series</drop>
+        <drop class="drop" @drop="handleSortDrop">Sort By</drop>
+        <div class="row">
+          <div class="col">
+            <div>Series</div>
+            <q-list bordered separator class="q-mt-md">
+              <q-item v-for="(itm, idx) in droppedArray" :key="idx">
+                <q-item-section>{{ itm.Name }}</q-item-section>
+                <q-item-section>
+                  <q-select
+                    outlined
+                    v-model="itm.AggType"
+                    :options="aggOptions"
+                    label="Select an aggregation type"
+                    @input="computeGraphData"
+                  />
+                </q-item-section>
+                <q-item-section side>
+                  <q-icon
+                    name="close"
+                    @click="removeFromDropped(idx)"
+                    style="cursor: pointer;"
+                  />
+                </q-item-section>
+              </q-item>
+            </q-list>
+          </div>
+          <div class="col">
+            <div>Sorting</div>
+            <q-list bordered separator class="q-mt-md">
+              <q-item v-for="(itm, idx) in droppedSortArray" :key="idx">
+                <q-item-section>{{ itm.Name }}</q-item-section>
+                <q-item-section>
+                  <q-select
+                    outlined
+                    v-model="itm.Sort"
+                    :options="['asc', 'desc']"
+                    label="Select an sort option"
+                    @input="computeGraphData"
+                  />
+                </q-item-section>
+                <q-item-section side>
+                  <q-icon
+                    name="close"
+                    @click="removeFromDropped(idx)"
+                    style="cursor: pointer;"
+                  />
+                </q-item-section>
+              </q-item>
+            </q-list>
+          </div>
+        </div>
       </div>
       <div class="col q-px-lg">
         <q-file
           v-model="files"
           label="Drop an excel or CSV file here"
           filled
-          :counter-label="counterLabelFn"
           max-files="1"
           multiple
           clearable
@@ -91,6 +120,7 @@
 
 <script>
 import XLSX from "xlsx";
+import alasql from "alasql";
 import { date } from "quasar";
 // const { capitalize } = format;
 
@@ -101,8 +131,8 @@ export default {
       files: [],
       processedFile: "",
       chartType: "line",
-      chartTypeOptions: ["line", "area", "bar", "pie", "polarArea"],
-      aggOptions: ["sum", "count"],
+      chartTypeOptions: ["line", "area", "bar", "pie", "donut", "polarArea"],
+      aggOptions: ["sum", "count", "avg", "max", "min"],
       columnHeaders: [],
       columnData: [],
       tableData: [],
@@ -134,6 +164,7 @@ export default {
       },
       realData: [],
       droppedArray: [],
+      droppedSortArray: [],
       xAxis: {},
       pagination: {
         rowsPerPage: 10,
@@ -144,8 +175,21 @@ export default {
     // capitalizeWord(word) {
     //   return capitalize(word);
     // },
-    counterLabelFn({ totalSize }) {
-      return `${totalSize}`;
+    queryData(inputArray, xProp, yProps, sortProps) {
+      let aggClause = yProps
+        .map((itm) => `${itm.AggType}([${itm.Name}]) AS [${itm.Name}]`)
+        .reduce((acc, obj) => `${acc}, ${obj}`);
+
+      let sortClause =
+        sortProps.length > 0
+          ? sortProps
+              .map((itm) => `${itm.Name} ${itm.Sort}`)
+              .reduce((acc, obj) => `${acc}, ${obj}`)
+          : 1;
+
+      let query = `SELECT ${xProp.Name}, ${aggClause} FROM ? GROUP BY ${xProp.Name} ORDER BY ${sortClause}`;
+      console.log(query);
+      console.log(alasql(query, [inputArray]));
     },
     groupSumBy(inputArray, xProp, yProps) {
       const sortedArray = inputArray.sort((a, b) =>
@@ -273,9 +317,22 @@ export default {
         this.computeGraphData();
       }
     },
+    handleSortDrop(data) {
+      if (!this.droppedSortArray.includes(data.item)) {
+        this.droppedSortArray.push(data.item);
+        this.computeGraphData();
+      }
+    },
     computeGraphData() {
       if (this.xAxis.Name && this.droppedArray.length > 0) {
         this.isLoading = true;
+
+        this.queryData(
+          this.realData,
+          this.xAxis,
+          this.droppedArray,
+          this.droppedSortArray
+        );
 
         if (this.chartType === "pie") {
           this.droppedArray.splice(1);
@@ -322,7 +379,6 @@ export default {
             },
             dataLabels: {
               enabled: true,
-              enabledOnSeries: undefined,
               formatter(val) {
                 return typeof val === "number" ? val.toLocaleString() : val;
               },
@@ -339,6 +395,13 @@ export default {
       }
     },
     setChartType() {
+      if (
+        this.chartType === "pie" ||
+        this.chartType === "donut" ||
+        this.chartType === "polarArea"
+      ) {
+        this.droppedArray.length = 1;
+      }
       this.computeGraphData();
     },
     removeFromDropped(idx) {
@@ -361,7 +424,7 @@ export default {
   padding: 30px;
   text-align: center;
   vertical-align: top;
-  min-width: 45%;
+  min-width: 30%;
 }
 
 .drag {

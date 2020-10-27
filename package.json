@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@quasar/extras": "^1.0.0",
+    "alasql": "^0.6.4",
     "apexcharts": "^3.22.0",
     "core-js": "^3.6.5",
     "quasar": "^1.0.0",
