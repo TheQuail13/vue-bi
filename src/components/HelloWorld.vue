@@ -26,6 +26,15 @@
         <q-list bordered separator class="q-mt-md">
           <q-item v-for="(itm, idx) in droppedArray" :key="idx">
             <q-item-section>{{ itm.Name }}</q-item-section>
+            <q-item-section>
+              <q-select
+                outlined
+                v-model="itm.AggType"
+                :options="aggOptions"
+                label="Select an aggregation type"
+                @input="computeGraphData"
+              />
+            </q-item-section>
             <q-item-section side>
               <q-icon
                 name="close"
@@ -83,6 +92,7 @@
 <script>
 import XLSX from "xlsx";
 import { date } from "quasar";
+// const { capitalize } = format;
 
 export default {
   data() {
@@ -92,6 +102,7 @@ export default {
       processedFile: "",
       chartType: "line",
       chartTypeOptions: ["line", "area", "bar", "pie", "polarArea"],
+      aggOptions: ["sum", "count"],
       columnHeaders: [],
       columnData: [],
       tableData: [],
@@ -130,6 +141,9 @@ export default {
     };
   },
   methods: {
+    // capitalizeWord(word) {
+    //   return capitalize(word);
+    // },
     counterLabelFn({ totalSize }) {
       return `${totalSize}`;
     },
@@ -146,7 +160,7 @@ export default {
           }
 
           if (!accumulator[key]) {
-            if (itm.Type === "string") {
+            if (itm.Type === "string" || itm.AggType === "count") {
               accumulator[key] = 1;
             } else {
               accumulator[key] =
@@ -155,7 +169,11 @@ export default {
                   : object[itm.Name];
             }
           } else {
-            accumulator[key] += itm.Type === "string" ? 1 : object[itm.Name];
+            if (itm.Type === "string" || itm.AggType === "count") {
+              accumulator[key] += 1;
+            } else {
+              accumulator[key] += object[itm.Name];
+            }
           }
           return accumulator;
         }, {});
@@ -212,14 +230,19 @@ export default {
           }
         });
 
-        let tArrCheck = tArr.map((row, rIdx) => ({
-          Name: typeof headers[rIdx] === "undefined" ? `Column${rIdx}` : headers[rIdx],
-          Type:
+        let tArrCheck = tArr.map((row, rIdx) => {
+          let type =
             row.filter((v, i, a) => a.indexOf(v) === i).length > 1
               ? "string"
-              : row.filter((v, i, a) => a.indexOf(v) === i)[0],
-          Sort: "asc",
-        }));
+              : row.filter((v, i, a) => a.indexOf(v) === i)[0];
+
+          return {
+            Name: typeof headers[rIdx] === "undefined" ? `Column${rIdx}` : headers[rIdx],
+            Type: type,
+            Sort: "asc",
+            AggType: type === "string" ? "count" : "sum",
+          };
+        });
 
         this.realData = realData;
         this.tableData = tableData;
