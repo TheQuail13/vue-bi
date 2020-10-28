@@ -34,7 +34,7 @@
                   <q-select
                     outlined
                     v-model="itm.AggType"
-                    :options="aggOptions"
+                    :options="getAggTypes(itm.Type)"
                     label="Select an aggregation type"
                     @input="computeGraphData"
                   />
@@ -96,7 +96,18 @@
           label="Select a chart type"
           class="q-mt-md"
           @input="setChartType"
-        />
+        >
+          <template v-slot:option="scope">
+            <q-item v-bind="scope.itemProps" v-on="scope.itemEvents">
+              <q-item-section>
+                <q-item-label v-html="scope.opt.name"></q-item-label>
+              </q-item-section>
+              <q-item-section side>
+                <q-icon :name="scope.opt.icon" />
+              </q-item-section>
+            </q-item>
+          </template>
+        </q-select>
       </div>
     </div>
     <div class="row justify-center">
@@ -132,7 +143,14 @@ export default {
       files: [],
       processedFile: "",
       chartType: "line",
-      chartTypeOptions: ["line", "area", "bar", "pie", "donut", "polarArea"],
+      chartTypeOptions: [
+        { name: "line", icon: "fas fa-chart-line" },
+        { name: "area", icon: "fas fa-chart-area" },
+        { name: "bar", icon: "fas fa-chart-bar" },
+        { name: "pie", icon: "fas fa-chart-pie" },
+        { name: "donut", icon: "fas fa-chart-pie" },
+        { name: "polarArea", icon: "fas fa-chart-pie" },
+      ],
       aggOptions: ["sum", "count", "avg", "max", "min"],
       columnHeaders: [],
       columnData: [],
@@ -193,34 +211,34 @@ export default {
 
       return this.groupSumByTemp(alasql(query, [inputArray]), xProp, yProps);
     },
-    groupSumBy(inputArray, xProp, yProps) {
-      return yProps.map((itm) => {
-        return inputArray.reduce((accumulator, object) => {
-          let key = object[xProp.Name];
-          if (Object.prototype.toString.call(key) === "[object Date]") {
-            key = date.formatDate(key, "YYYY-MM-DD");
-          }
+    // groupSumBy(inputArray, xProp, yProps) {
+    //   return yProps.map((itm) => {
+    //     return inputArray.reduce((accumulator, object) => {
+    //       let key = object[xProp.Name];
+    //       if (Object.prototype.toString.call(key) === "[object Date]") {
+    //         key = date.formatDate(key, "YYYY-MM-DD");
+    //       }
 
-          if (!accumulator[key]) {
-            if (itm.Type === "string" || itm.AggType === "count") {
-              accumulator[key] = 1;
-            } else {
-              accumulator[key] =
-                typeof object[itm.Name] === "undefined" || object[itm.Name] === null
-                  ? 0
-                  : object[itm.Name];
-            }
-          } else {
-            if (itm.Type === "string" || itm.AggType === "count") {
-              accumulator[key] += 1;
-            } else {
-              accumulator[key] += object[itm.Name];
-            }
-          }
-          return accumulator;
-        }, {});
-      });
-    },
+    //       if (!accumulator[key]) {
+    //         if (itm.Type === "string" || itm.AggType === "count") {
+    //           accumulator[key] = 1;
+    //         } else {
+    //           accumulator[key] =
+    //             typeof object[itm.Name] === "undefined" || object[itm.Name] === null
+    //               ? 0
+    //               : object[itm.Name];
+    //         }
+    //       } else {
+    //         if (itm.Type === "string" || itm.AggType === "count") {
+    //           accumulator[key] += 1;
+    //         } else {
+    //           accumulator[key] += object[itm.Name];
+    //         }
+    //       }
+    //       return accumulator;
+    //     }, {});
+    //   });
+    // },
     groupSumByTemp(inputArray, xProp, yProps) {
       return yProps.map((itm) => {
         return inputArray.reduce((accumulator, object) => {
@@ -440,6 +458,9 @@ export default {
     removeFromDroppedSort(idx) {
       this.droppedSortArray.splice(idx, 1);
       this.computeGraphData();
+    },
+    getAggTypes(type) {
+      return type === "number" ? ["sum", "count", "avg", "max", "min"] : ["count"];
     },
   },
   computed: {},
