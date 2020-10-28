@@ -95,12 +95,15 @@
           :options="chartTypeOptions"
           label="Select a chart type"
           class="q-mt-md"
+          map-options
+          option-label="name"
+          option-value="name"
           @input="setChartType"
         >
           <template v-slot:option="scope">
             <q-item v-bind="scope.itemProps" v-on="scope.itemEvents">
               <q-item-section>
-                <q-item-label v-html="scope.opt.name"></q-item-label>
+                <q-item-label>{{ capitalize(scope.opt.name) }}</q-item-label>
               </q-item-section>
               <q-item-section side>
                 <q-icon :name="scope.opt.icon" />
@@ -118,14 +121,14 @@
         <apexchart
           height="750"
           width="100%"
-          :type="chartType"
+          :type="chartType.name"
           :options="graphOptions"
           :series="graphData"
         ></apexchart>
       </div>
     </div>
     <q-inner-loading :showing="isLoading">
-      <q-spinner-grid size="125px" color="green" />
+      <q-spinner-grid size="125px" color="primary" />
     </q-inner-loading>
   </q-page>
 </template>
@@ -133,8 +136,8 @@
 <script>
 import XLSX from "xlsx";
 import alasql from "alasql";
-import { date } from "quasar";
-// const { capitalize } = format;
+import { date, format } from "quasar";
+const { capitalize } = format;
 
 export default {
   data() {
@@ -142,7 +145,7 @@ export default {
       isLoading: false,
       files: [],
       processedFile: "",
-      chartType: "line",
+      chartType: { name: "line", icon: "fas fa-chart-line" },
       chartTypeOptions: [
         { name: "line", icon: "fas fa-chart-line" },
         { name: "area", icon: "fas fa-chart-area" },
@@ -191,9 +194,7 @@ export default {
     };
   },
   methods: {
-    // capitalizeWord(word) {
-    //   return capitalize(word);
-    // },
+    capitalize,
     queryData(inputArray, xProp, yProps, sortProps) {
       let aggClause = yProps
         .map((itm) => `${itm.AggType}([${itm.Name}]) AS [${itm.Name}]`)
@@ -276,11 +277,11 @@ export default {
         let baseData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
         let headers = baseData[0];
 
-        let tableData = XLSX.utils.sheet_to_json(worksheet, {
-          header: 0,
-          raw: false, // only for table display
-          defval: "",
-        });
+        // let tableData = XLSX.utils.sheet_to_json(worksheet, {
+        //   header: 0,
+        //   raw: false, // only for table display
+        //   defval: "",
+        // });
 
         let realData = XLSX.utils.sheet_to_json(worksheet, {
           header: 0,
@@ -322,7 +323,7 @@ export default {
         });
 
         this.realData = realData;
-        this.tableData = tableData;
+        // this.tableData = tableData;
         this.columnHeaders = tArrCheck;
         this.columnData = dataArr;
 
@@ -368,7 +369,7 @@ export default {
           this.droppedSortArray
         );
 
-        if (this.chartType === "pie") {
+        if (this.chartType.name === "pie") {
           this.droppedArray.splice(1);
         }
 
@@ -379,7 +380,11 @@ export default {
         //   this.groupSumByTemp(raw1, this.xAxis, this.droppedArray)
         // );
 
-        if (this.chartType === "pie" || this.chartType === "polarArea") {
+        if (
+          this.chartType.name === "pie" ||
+          this.chartType.name === "donut" ||
+          this.chartType.name === "polarArea"
+        ) {
           this.graphData = null;
           this.graphData = Object.values(queryResults[0]);
         } else {
@@ -389,7 +394,11 @@ export default {
           }));
         }
 
-        if (this.chartType === "pie" || this.chartType === "polarArea") {
+        if (
+          this.chartType.name === "pie" ||
+          this.chartType.name === "donut" ||
+          this.chartType.name === "polarArea"
+        ) {
           this.graphOptions = null;
           this.graphOptions = {
             labels: Object.keys(queryResults[0]),
@@ -414,6 +423,7 @@ export default {
               labels: {
                 show: true,
                 rotate: -90,
+                // hideOverlappingLabels: true,
               },
             },
             dataLabels: {
@@ -443,9 +453,9 @@ export default {
     },
     setChartType() {
       if (
-        this.chartType === "pie" ||
-        this.chartType === "donut" ||
-        this.chartType === "polarArea"
+        this.chartType.name === "pie" ||
+        this.chartType.name === "donut" ||
+        this.chartType.name === "polarArea"
       ) {
         this.droppedArray.length = 1;
       }
