@@ -23,7 +23,8 @@
           xAxis.Name ? xAxis.Name : "X-Axis"
         }}</drop>
         <drop class="drop q-mr-md" @drop="handleYDrop">Series</drop>
-        <drop class="drop" @drop="handleSortDrop">Sort By</drop>
+        <drop class="drop q-mr-md" @drop="handleSortDrop">Sort By</drop>
+        <drop class="drop" @drop="handleFilterDrop">Filter</drop>
         <div class="row q-mt-md">
           <div class="col q-mr-md">
             <div class="text-center"><strong>Series</strong></div>
@@ -49,7 +50,7 @@
               </q-item>
             </q-list>
           </div>
-          <div class="col">
+          <div class="col q-mr-md">
             <div class="text-center"><strong>Sorting</strong></div>
             <q-list bordered separator class="q-mt-md">
               <q-item v-for="(itm, idx) in droppedSortArray" :key="idx">
@@ -57,9 +58,16 @@
                 <q-item-section>
                   <q-select
                     outlined
-                    v-model="itm.Sort"
+                    v-model="itm.Sort.Direction"
                     :options="['asc', 'desc']"
-                    label="Select an sort option"
+                    label="Sort Direction"
+                    @input="computeGraphData"
+                  />
+                  <q-select
+                    outlined
+                    v-model="itm.Sort.Aggregation"
+                    :options="['sum', 'none']"
+                    label="Sort Aggregation"
                     @input="computeGraphData"
                   />
                 </q-item-section>
@@ -67,6 +75,34 @@
                   <q-icon
                     name="close"
                     @click="removeFromDroppedSort(idx)"
+                    style="cursor: pointer;"
+                  />
+                </q-item-section>
+              </q-item>
+            </q-list>
+          </div>
+          <div class="col">
+            <div class="text-center"><strong>Filters</strong></div>
+            <q-list bordered separator class="q-mt-md">
+              <q-item v-for="(itm, idx) in droppedFilterArray" :key="idx">
+                <q-item-section>{{ itm.Name }}</q-item-section>
+                <q-item-section>
+                  <q-select
+                    outlined
+                    v-model="itm.Filter.Operator"
+                    :options="getFilterTypes(itm.Type)"
+                    label="Filter Operator"
+                  />
+                  <q-input
+                    v-model="itm.Filter.Value"
+                    label="Filter Value"
+                    @blur="computeGraphData"
+                  />
+                </q-item-section>
+                <q-item-section side>
+                  <q-icon
+                    name="close"
+                    @click="removeFromDroppedFilter(idx)"
                     style="cursor: pointer;"
                   />
                 </q-item-section>
@@ -155,6 +191,7 @@ export default {
         { name: "polarArea", icon: "fas fa-chart-pie" },
       ],
       aggOptions: ["sum", "count", "avg", "max", "min"],
+      filterOperators: [""],
       columnHeaders: [],
       columnData: [],
       tableData: [],
@@ -187,60 +224,71 @@ export default {
       realData: [],
       droppedArray: [],
       droppedSortArray: [],
+      droppedFilterArray: [],
       xAxis: {},
       pagination: {
         rowsPerPage: 10,
       },
+      lastQuery: "",
     };
   },
   methods: {
     capitalize,
-    queryData(inputArray, xProp, yProps, sortProps) {
+    queryData(inputArray, xProp, yProps, sortProps, filterProps) {
+      let filterClause;
       let aggClause = yProps
         .map((itm) => `${itm.AggType}([${itm.Name}]) AS [${itm.Name}]`)
         .reduce((acc, obj) => `${acc}, ${obj}`);
 
+      if (filterProps.length > 0) {
+        filterClause = filterProps
+          .map(
+            (itm) =>
+              `LOWER([${itm.Name}]) ${itm.Filter.Operator} ${
+                itm.Type === "number"
+                  ? itm.Filter.Value
+                  : `'${itm.Filter.Value.toLowerCase()}'`
+              }`
+          )
+          .reduce((acc, obj) => {
+            if (!acc) {
+              acc = `WHERE ${obj}`;
+            } else {
+              acc = `${acc} AND ${obj}`;
+            }
+            return acc;
+          }, "");
+        // console.log(filterClause);
+      }
+
       let sortClause =
         sortProps.length > 0
           ? sortProps
-              .map((itm) => `${itm.Name} ${itm.Sort}`)
+              .map(
+                (itm) =>
+                  `${
+                    itm.Sort.Aggregation === "none"
+                      ? `[${itm.Name}]`
+                      : `${itm.Sort.Aggregation}([${itm.Name}])`
+                  } ${itm.Sort.Direction}`
+              )
               .reduce((acc, obj) => `${acc}, ${obj}`)
           : 1;
 
-      let query = `SELECT ${xProp.Name}, ${aggClause} FROM ? GROUP BY ${xProp.Name} ORDER BY ${sortClause}`;
+      let query = `SELECT ${xProp.Name}, ${aggClause} FROM ? ${
+        filterProps.length > 0 ? filterClause : ""
+      } GROUP BY ${xProp.Name} ORDER BY ${sortClause}`;
       console.log(query);
-
-      return this.groupSumByTemp(alasql(query, [inputArray]), xProp, yProps);
+      if (this.lastQuery !== query) {
+        this.lastQuery = query;
+        let qResults = alasql(query, [inputArray]);
+        return this.groupSumBy(qResults, xProp, yProps);
+      } else {
+        this.lastQuery = query;
+        return false;
+      }
     },
-    // groupSumBy(inputArray, xProp, yProps) {
-    //   return yProps.map((itm) => {
-    //     return inputArray.reduce((accumulator, object) => {
-    //       let key = object[xProp.Name];
-    //       if (Object.prototype.toString.call(key) === "[object Date]") {
-    //         key = date.formatDate(key, "YYYY-MM-DD");
-    //       }
-
-    //       if (!accumulator[key]) {
-    //         if (itm.Type === "string" || itm.AggType === "count") {
-    //           accumulator[key] = 1;
-    //         } else {
-    //           accumulator[key] =
-    //             typeof object[itm.Name] === "undefined" || object[itm.Name] === null
-    //               ? 0
-    //               : object[itm.Name];
-    //         }
-    //       } else {
-    //         if (itm.Type === "string" || itm.AggType === "count") {
-    //           accumulator[key] += 1;
-    //         } else {
-    //           accumulator[key] += object[itm.Name];
-    //         }
-    //       }
-    //       return accumulator;
-    //     }, {});
-    //   });
-    // },
-    groupSumByTemp(inputArray, xProp, yProps) {
+    groupSumBy(inputArray, xProp, yProps) {
       return yProps.map((itm) => {
         return inputArray.reduce((accumulator, object) => {
           let key = object[xProp.Name];
@@ -317,7 +365,14 @@ export default {
           return {
             Name: typeof headers[rIdx] === "undefined" ? `Column${rIdx}` : headers[rIdx],
             Type: type,
-            Sort: "asc",
+            Sort: {
+              Direction: "asc",
+              Aggregation: "none",
+            },
+            Filter: {
+              Operator: "=",
+              Value: "",
+            },
             AggType: type === "string" ? "count" : "sum",
           };
         });
@@ -358,6 +413,11 @@ export default {
         this.computeGraphData();
       }
     },
+    handleFilterDrop(data) {
+      if (!this.droppedFilterArray.includes(data.item)) {
+        this.droppedFilterArray.push(data.item);
+      }
+    },
     computeGraphData() {
       if (this.xAxis.Name && this.droppedArray.length > 0) {
         this.isLoading = true;
@@ -366,88 +426,92 @@ export default {
           this.realData,
           this.xAxis,
           this.droppedArray,
-          this.droppedSortArray
+          this.droppedSortArray,
+          this.droppedFilterArray
         );
 
-        if (this.chartType.name === "pie") {
-          this.droppedArray.splice(1);
-        }
+        if (queryResults) {
+          if (this.chartType.name === "pie") {
+            this.droppedArray.splice(1);
+          }
 
-        // let raw = this.groupSumBy(this.realData, this.xAxis, this.droppedArray);
+          // let raw = this.groupSumBy(this.realData, this.xAxis, this.droppedArray);
 
-        // console.log(
-        //   "groupbyTemp: ",
-        //   this.groupSumByTemp(raw1, this.xAxis, this.droppedArray)
-        // );
+          // console.log(
+          //   "groupbyTemp: ",
+          //   this.groupSumByTemp(raw1, this.xAxis, this.droppedArray)
+          // );
 
-        if (
-          this.chartType.name === "pie" ||
-          this.chartType.name === "donut" ||
-          this.chartType.name === "polarArea"
-        ) {
-          this.graphData = null;
-          this.graphData = Object.values(queryResults[0]);
-        } else {
-          this.graphData = queryResults.map((itm, idx) => ({
-            data: Object.values(itm),
-            name: this.droppedArray[idx].Name,
-          }));
-        }
+          if (
+            this.chartType.name === "pie" ||
+            this.chartType.name === "donut" ||
+            this.chartType.name === "polarArea"
+          ) {
+            this.graphData = null;
+            this.graphData = Object.values(queryResults[0]);
+          } else {
+            this.graphData = queryResults.map((itm, idx) => ({
+              data: Object.values(itm),
+              name: this.droppedArray[idx].Name,
+            }));
+          }
 
-        if (
-          this.chartType.name === "pie" ||
-          this.chartType.name === "donut" ||
-          this.chartType.name === "polarArea"
-        ) {
-          this.graphOptions = null;
-          this.graphOptions = {
-            labels: Object.keys(queryResults[0]),
-          };
-        } else {
-          this.graphOptions = {
-            chart: {
-              animations: {
-                enabled: true,
-              },
-            },
-            plotOptions: {
-              bar: {
-                // horizontal: true,
-                dataLabels: {
-                  position: "top",
+          if (
+            this.chartType.name === "pie" ||
+            this.chartType.name === "donut" ||
+            this.chartType.name === "polarArea"
+          ) {
+            this.graphOptions = null;
+            this.graphOptions = {
+              labels: Object.keys(queryResults[0]),
+            };
+          } else {
+            this.graphOptions = {
+              chart: {
+                animations: {
+                  enabled: true,
                 },
               },
-            },
-            xaxis: {
-              categories: Object.keys(queryResults[0]),
-              labels: {
-                show: true,
-                rotate: -90,
-                // hideOverlappingLabels: true,
+              plotOptions: {
+                bar: {
+                  // horizontal: true,
+                  dataLabels: {
+                    position: "top",
+                  },
+                },
               },
-            },
-            dataLabels: {
-              enabled: true,
-              offsetY: -8,
-              style: {
-                colors: ["#333"],
+              xaxis: {
+                categories: Object.keys(queryResults[0]),
+                labels: {
+                  show: true,
+                  rotate: -90,
+                  // hideOverlappingLabels: true,
+                },
               },
-              background: {
+              dataLabels: {
                 enabled: true,
-                padding: 3,
+                offsetY: -8,
+                style: {
+                  colors: ["#333"],
+                },
+                background: {
+                  enabled: true,
+                  padding: 3,
+                },
+                formatter(val) {
+                  return typeof val === "number" ? val.toLocaleString() : val;
+                },
               },
-              formatter(val) {
-                return typeof val === "number" ? val.toLocaleString() : val;
+              tooltip: {
+                x: {
+                  // show: true,
+                  formatter: (x) => x.toLocaleString(),
+                },
               },
-            },
-            tooltip: {
-              x: {
-                // show: true,
-                formatter: (x) => x.toLocaleString(),
-              },
-            },
-          };
+            };
+          }
         }
+
         this.isLoading = false;
       }
     },
@@ -469,11 +533,17 @@ export default {
       this.droppedSortArray.splice(idx, 1);
       this.computeGraphData();
     },
-    getAggTypes(type) {
-      return type === "number" ? ["sum", "count", "avg", "max", "min"] : ["count"];
+    removeFromDroppedFilter(idx) {
+      this.droppedFilterArray.splice(idx, 1);
+      this.computeGraphData();
+    },
+    getAggTypes(dataType) {
+      return dataType === "number" ? ["sum", "count", "avg", "max", "min"] : ["count"];
+    },
+    getFilterTypes(dataType) {
+      return dataType === "number" ? ["=", ">", "<", ">=", "<="] : ["=", "like"];
     },
   },
-  computed: {},
 };
 </script>
 
@@ -488,7 +558,7 @@ export default {
   padding: 30px;
   text-align: center;
   vertical-align: top;
-  min-width: 30%;
+  min-width: 23%;
 }
 
 .drag {
