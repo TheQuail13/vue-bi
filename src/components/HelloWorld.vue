@@ -18,15 +18,15 @@
           </q-virtual-scroll>
         </q-list>
       </div>
-      <div class="col-4 q-px-lg">
+      <div class="col-7 q-px-lg">
         <drop class="drop q-mr-md" @drop="handleXDrop">{{
           xAxis.Name ? xAxis.Name : "X-Axis"
         }}</drop>
         <drop class="drop q-mr-md" @drop="handleYDrop">Series</drop>
         <drop class="drop" @drop="handleSortDrop">Sort By</drop>
-        <div class="row">
-          <div class="col">
-            <div>Series</div>
+        <div class="row q-mt-md">
+          <div class="col q-mr-md">
+            <div class="text-center"><strong>Series</strong></div>
             <q-list bordered separator class="q-mt-md">
               <q-item v-for="(itm, idx) in droppedArray" :key="idx">
                 <q-item-section>{{ itm.Name }}</q-item-section>
@@ -50,7 +50,7 @@
             </q-list>
           </div>
           <div class="col">
-            <div>Sorting</div>
+            <div class="text-center"><strong>Sorting</strong></div>
             <q-list bordered separator class="q-mt-md">
               <q-item v-for="(itm, idx) in droppedSortArray" :key="idx">
                 <q-item-section>{{ itm.Name }}</q-item-section>
@@ -66,7 +66,7 @@
                 <q-item-section side>
                   <q-icon
                     name="close"
-                    @click="removeFromDropped(idx)"
+                    @click="removeFromDroppedSort(idx)"
                     style="cursor: pointer;"
                   />
                 </q-item-section>
@@ -75,7 +75,7 @@
           </div>
         </div>
       </div>
-      <div class="col q-px-lg">
+      <div class="col-3 q-px-lg">
         <q-file
           v-model="files"
           label="Drop an excel or CSV file here"
@@ -83,10 +83,11 @@
           max-files="1"
           multiple
           clearable
+          @input="processFile"
         >
-          <template v-slot:after>
+          <!-- <template v-slot:after>
             <q-btn round dense flat icon="send" @click.prevent="processFile" />
-          </template>
+          </template> -->
         </q-file>
         <q-select
           outlined
@@ -189,15 +190,12 @@ export default {
 
       let query = `SELECT ${xProp.Name}, ${aggClause} FROM ? GROUP BY ${xProp.Name} ORDER BY ${sortClause}`;
       console.log(query);
-      console.log(alasql(query, [inputArray]));
+
+      return this.groupSumByTemp(alasql(query, [inputArray]), xProp, yProps);
     },
     groupSumBy(inputArray, xProp, yProps) {
-      const sortedArray = inputArray.sort((a, b) =>
-        a[xProp.Name] > b[xProp.Name] ? 1 : b[xProp.Name] > a[xProp.Name] ? -1 : 0
-      );
-
       return yProps.map((itm) => {
-        return sortedArray.reduce((accumulator, object) => {
+        return inputArray.reduce((accumulator, object) => {
           let key = object[xProp.Name];
           if (Object.prototype.toString.call(key) === "[object Date]") {
             key = date.formatDate(key, "YYYY-MM-DD");
@@ -218,6 +216,23 @@ export default {
             } else {
               accumulator[key] += object[itm.Name];
             }
+          }
+          return accumulator;
+        }, {});
+      });
+    },
+    groupSumByTemp(inputArray, xProp, yProps) {
+      return yProps.map((itm) => {
+        return inputArray.reduce((accumulator, object) => {
+          let key = object[xProp.Name];
+          if (Object.prototype.toString.call(key) === "[object Date]") {
+            key = date.formatDate(key, "YYYY-MM-DD");
+          }
+
+          if (!accumulator[key]) {
+            accumulator[key] = object[itm.Name];
+          } else {
+            accumulator[key] += object[itm.Name];
           }
           return accumulator;
         }, {});
@@ -310,6 +325,7 @@ export default {
     },
     handleXDrop(data) {
       this.xAxis = data.item;
+      this.computeGraphData();
     },
     handleYDrop(data) {
       if (!this.droppedArray.includes(data.item)) {
@@ -327,7 +343,7 @@ export default {
       if (this.xAxis.Name && this.droppedArray.length > 0) {
         this.isLoading = true;
 
-        this.queryData(
+        let queryResults = this.queryData(
           this.realData,
           this.xAxis,
           this.droppedArray,
@@ -338,13 +354,18 @@ export default {
           this.droppedArray.splice(1);
         }
 
-        let raw = this.groupSumBy(this.realData, this.xAxis, this.droppedArray);
+        // let raw = this.groupSumBy(this.realData, this.xAxis, this.droppedArray);
+
+        // console.log(
+        //   "groupbyTemp: ",
+        //   this.groupSumByTemp(raw1, this.xAxis, this.droppedArray)
+        // );
 
         if (this.chartType === "pie" || this.chartType === "polarArea") {
           this.graphData = null;
-          this.graphData = Object.values(raw[0]);
+          this.graphData = Object.values(queryResults[0]);
         } else {
-          this.graphData = raw.map((itm, idx) => ({
+          this.graphData = queryResults.map((itm, idx) => ({
             data: Object.values(itm),
             name: this.droppedArray[idx].Name,
           }));
@@ -353,7 +374,7 @@ export default {
         if (this.chartType === "pie" || this.chartType === "polarArea") {
           this.graphOptions = null;
           this.graphOptions = {
-            labels: Object.keys(raw[0]),
+            labels: Object.keys(queryResults[0]),
           };
         } else {
           this.graphOptions = {
@@ -371,7 +392,7 @@ export default {
               },
             },
             xaxis: {
-              categories: Object.keys(raw[0]),
+              categories: Object.keys(queryResults[0]),
               labels: {
                 show: true,
                 rotate: -90,
@@ -379,6 +400,14 @@ export default {
             },
             dataLabels: {
               enabled: true,
+              offsetY: -8,
+              style: {
+                colors: ["#333"],
+              },
+              background: {
+                enabled: true,
+                padding: 3,
+              },
               formatter(val) {
                 return typeof val === "number" ? val.toLocaleString() : val;
               },
@@ -406,6 +435,10 @@ export default {
     },
     removeFromDropped(idx) {
       this.droppedArray.splice(idx, 1);
+      this.computeGraphData();
+    },
+    removeFromDroppedSort(idx) {
+      this.droppedSortArray.splice(idx, 1);
       this.computeGraphData();
     },
   },
