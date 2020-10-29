@@ -29,7 +29,9 @@
     "node-sass": "^4.13.0",
     "sass-loader": "^8.0.0",
     "vue-cli-plugin-quasar": "~3.0.1",
-    "vue-template-compiler": "^2.6.11"
+    "vue-template-compiler": "^2.6.11",
+    "worker-loader": "^3.0.5",
+    "worker-plugin": "^5.0.0"
   },
   "eslintConfig": {
     "root": true,

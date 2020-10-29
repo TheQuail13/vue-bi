@@ -1,3 +1,5 @@
+const WorkerPlugin = require('worker-plugin');
+
 module.exports = {
   pluginOptions: {
     quasar: {
@@ -7,5 +9,13 @@ module.exports = {
   },
   transpileDependencies: [
     'quasar'
-  ]
+  ],
+  configureWebpack: {
+    output: {
+      globalObject: "this"
+    },
+    plugins: [
+      new WorkerPlugin()
+    ]
+  }
 }

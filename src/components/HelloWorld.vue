@@ -8,9 +8,7 @@
               <drag style="cursor: move;" :transfer-data="{ item }">
                 <q-item :key="index" bordered clickable>
                   <q-item-section>
-                    <q-item-label>
-                      <q-icon :name="getIcon(item.Type)" /> {{ item.Name }}
-                    </q-item-label>
+                    <q-item-label> <q-icon :name="getIcon(item.Type)" /> {{ item.Name }} </q-item-label>
                   </q-item-section>
                 </q-item>
               </drag>
@@ -19,9 +17,7 @@
         </q-list>
       </div>
       <div class="col-7 q-px-lg">
-        <drop class="drop q-mr-md" @drop="handleXDrop">{{
-          xAxis.Name ? xAxis.Name : "X-Axis"
-        }}</drop>
+        <drop class="drop q-mr-md" @drop="handleXDrop">{{ xAxis.Name ? xAxis.Name : "X-Axis" }}</drop>
         <drop class="drop q-mr-md" @drop="handleYDrop">Series</drop>
         <drop class="drop q-mr-md" @drop="handleSortDrop">Sort By</drop>
         <drop class="drop" @drop="handleFilterDrop">Filter</drop>
@@ -41,11 +37,7 @@
                   />
                 </q-item-section>
                 <q-item-section side>
-                  <q-icon
-                    name="close"
-                    @click="removeFromDropped(idx)"
-                    style="cursor: pointer;"
-                  />
+                  <q-icon name="close" @click="removeFromDropped(idx)" style="cursor: pointer;" />
                 </q-item-section>
               </q-item>
             </q-list>
@@ -72,11 +64,7 @@
                   />
                 </q-item-section>
                 <q-item-section side>
-                  <q-icon
-                    name="close"
-                    @click="removeFromDroppedSort(idx)"
-                    style="cursor: pointer;"
-                  />
+                  <q-icon name="close" @click="removeFromDroppedSort(idx)" style="cursor: pointer;" />
                 </q-item-section>
               </q-item>
             </q-list>
@@ -93,18 +81,10 @@
                     :options="getFilterTypes(itm.Type)"
                     label="Filter Operator"
                   />
-                  <q-input
-                    v-model="itm.Filter.Value"
-                    label="Filter Value"
-                    @blur="computeGraphData"
-                  />
+                  <q-input v-model="itm.Filter.Value" label="Filter Value" @blur="computeGraphData" />
                 </q-item-section>
                 <q-item-section side>
-                  <q-icon
-                    name="close"
-                    @click="removeFromDroppedFilter(idx)"
-                    style="cursor: pointer;"
-                  />
+                  <q-icon name="close" @click="removeFromDroppedFilter(idx)" style="cursor: pointer;" />
                 </q-item-section>
               </q-item>
             </q-list>
@@ -119,10 +99,10 @@
           max-files="1"
           multiple
           clearable
-          @input="processFile"
+          @input="parseFile"
         >
           <!-- <template v-slot:after>
-            <q-btn round dense flat icon="send" @click.prevent="processFile" />
+            <q-btn round dense flat icon="send" @click.prevent="parseFile" />
           </template> -->
         </q-file>
         <q-select
@@ -170,7 +150,9 @@
 </template>
 
 <script>
-import XLSX from "xlsx";
+import Worker from "@/xlsx-worker/index.js";
+
+// import XLSX from "xlsx";
 import alasql from "alasql";
 import { date, format } from "quasar";
 const { capitalize } = format;
@@ -221,7 +203,7 @@ export default {
         column: "",
         type: "asc",
       },
-      realData: [],
+      flatFileData: [],
       droppedArray: [],
       droppedSortArray: [],
       droppedFilterArray: [],
@@ -229,27 +211,28 @@ export default {
       pagination: {
         rowsPerPage: 10,
       },
-      lastQuery: "",
+      latestQuery: "",
     };
   },
   methods: {
     capitalize,
     queryData(inputArray, xProp, yProps, sortProps, filterProps) {
       let filterClause;
+      // Generate the columns to aggregate in the select clause
       let aggClause = yProps
         .map((itm) => `${itm.AggType}([${itm.Name}]) AS [${itm.Name}]`)
         .reduce((acc, obj) => `${acc}, ${obj}`);
 
-      if (filterProps.length > 0) {
+      // If any filters, generate the where clause
+      if (filterProps.length > 0 && filterProps[0].Filter.Value) {
         filterClause = filterProps
-          .map(
-            (itm) =>
-              `LOWER([${itm.Name}]) ${itm.Filter.Operator} ${
-                itm.Type === "number"
-                  ? itm.Filter.Value
-                  : `'${itm.Filter.Value.toLowerCase()}'`
-              }`
-          )
+          .map((itm) => {
+            const colName = `${itm.Type === "number" ? `[${itm.Name}]` : `LOWER([${itm.Name}])`}`;
+
+            const colValue = itm.Type === "number" ? itm.Filter.Value : `'${itm.Filter.Value.toLowerCase()}'`;
+
+            return `${colName} ${itm.Filter.Operator} ${colValue}`;
+          })
           .reduce((acc, obj) => {
             if (!acc) {
               acc = `WHERE ${obj}`;
@@ -261,30 +244,35 @@ export default {
         // console.log(filterClause);
       }
 
-      let sortClause =
+      // Generate the order by clause
+      const sortClause =
         sortProps.length > 0
           ? sortProps
-              .map(
-                (itm) =>
-                  `${
-                    itm.Sort.Aggregation === "none"
-                      ? `[${itm.Name}]`
-                      : `${itm.Sort.Aggregation}([${itm.Name}])`
-                  } ${itm.Sort.Direction}`
-              )
+              .map((itm) => {
+                const sortCol =
+                  itm.Sort.Aggregation === "none"
+                    ? `[${itm.Name}]`
+                    : `${itm.Sort.Aggregation}([${itm.Name}])`;
+
+                return `${sortCol} ${itm.Sort.Direction}`;
+              })
               .reduce((acc, obj) => `${acc}, ${obj}`)
           : 1;
 
-      let query = `SELECT ${xProp.Name}, ${aggClause} FROM ? ${
+      // Compile executed query
+      const query = `SELECT ${xProp.Name}, ${aggClause} FROM ? ${
         filterProps.length > 0 ? filterClause : ""
       } GROUP BY ${xProp.Name} ORDER BY ${sortClause}`;
+
       console.log(query);
-      if (this.lastQuery !== query) {
-        this.lastQuery = query;
+
+      // If current query matches previous one, don't re-process
+      if (this.latestQuery !== query) {
+        this.latestQuery = query;
         let qResults = alasql(query, [inputArray]);
         return this.groupSumBy(qResults, xProp, yProps);
       } else {
-        this.lastQuery = query;
+        this.latestQuery = query;
         return false;
       }
     },
@@ -305,87 +293,48 @@ export default {
         }, {});
       });
     },
-    processFile() {
+    parseFile() {
       this.isLoading = true;
-      let f = this.files[0];
-      let reader = new FileReader();
+      Worker.send(this.files[0]);
+    },
+    processFileResults(headers, typeCheckData) {
+      let tArr = [];
+      typeCheckData.map((oRow, oIdx) => {
+        if (oIdx > 0) {
+          oRow.map((iRow, iIdx) => {
+            let t = Object.prototype.toString.call(iRow) === "[object Date]";
+            let ft = t === true ? "date" : typeof iRow;
 
-      reader.onload = (e) => {
-        let data = new Uint8Array(e.target.result);
-        let workbook = XLSX.read(data, {
-          type: "array",
-          cellDates: true,
-          cellText: false,
-          sheetStubs: true,
-        });
+            if (typeof tArr[iIdx] === "undefined") {
+              tArr[iIdx] = [ft];
+            } else {
+              tArr[iIdx].push(ft);
+            }
+          });
+        }
+      });
+      let tArrCheck = tArr.map((row, rIdx) => {
+        let type =
+          row.filter((v, i, a) => a.indexOf(v) === i).length > 1
+            ? "string"
+            : row.filter((v, i, a) => a.indexOf(v) === i)[0];
 
-        let sheetName = workbook.SheetNames[0];
-        let worksheet = workbook.Sheets[sheetName];
+        return {
+          Name: typeof headers[rIdx] === "undefined" ? `Column${rIdx}` : headers[rIdx],
+          Type: type,
+          Sort: {
+            Direction: "asc",
+            Aggregation: "none",
+          },
+          Filter: {
+            Operator: "=",
+            Value: "",
+          },
+          AggType: type === "string" ? "count" : "sum",
+        };
+      });
 
-        let baseData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-        let headers = baseData[0];
-
-        // let tableData = XLSX.utils.sheet_to_json(worksheet, {
-        //   header: 0,
-        //   raw: false, // only for table display
-        //   defval: "",
-        // });
-
-        let realData = XLSX.utils.sheet_to_json(worksheet, {
-          header: 0,
-          blankrows: true,
-          defval: null,
-        });
-
-        let tArr = [];
-        let dataArr = [];
-        baseData.map((oRow, oIdx) => {
-          if (oIdx > 0) {
-            oRow.map((iRow, iIdx) => {
-              let t = Object.prototype.toString.call(iRow) === "[object Date]";
-              let ft = t === true ? "date" : typeof iRow;
-
-              if (typeof tArr[iIdx] === "undefined") {
-                tArr[iIdx] = [ft];
-                dataArr[iIdx] = [iRow];
-              } else {
-                tArr[iIdx].push(ft);
-                dataArr[iIdx].push(iRow);
-              }
-            });
-          }
-        });
-
-        let tArrCheck = tArr.map((row, rIdx) => {
-          let type =
-            row.filter((v, i, a) => a.indexOf(v) === i).length > 1
-              ? "string"
-              : row.filter((v, i, a) => a.indexOf(v) === i)[0];
-
-          return {
-            Name: typeof headers[rIdx] === "undefined" ? `Column${rIdx}` : headers[rIdx],
-            Type: type,
-            Sort: {
-              Direction: "asc",
-              Aggregation: "none",
-            },
-            Filter: {
-              Operator: "=",
-              Value: "",
-            },
-            AggType: type === "string" ? "count" : "sum",
-          };
-        });
-
-        this.realData = realData;
-        // this.tableData = tableData;
-        this.columnHeaders = tArrCheck;
-        this.columnData = dataArr;
-
-        this.isLoading = false;
-      };
-
-      reader.readAsArrayBuffer(f);
+      this.columnHeaders = tArrCheck;
     },
     getIcon(type) {
       switch (type) {
@@ -423,7 +372,7 @@ export default {
         this.isLoading = true;
 
         let queryResults = this.queryData(
-          this.realData,
+          this.flatFileData,
           this.xAxis,
           this.droppedArray,
           this.droppedSortArray,
@@ -434,13 +383,6 @@ export default {
           if (this.chartType.name === "pie") {
             this.droppedArray.splice(1);
           }
-
-          // let raw = this.groupSumBy(this.realData, this.xAxis, this.droppedArray);
-
-          // console.log(
-          //   "groupbyTemp: ",
-          //   this.groupSumByTemp(raw1, this.xAxis, this.droppedArray)
-          // );
 
           if (
             this.chartType.name === "pie" ||
@@ -484,8 +426,8 @@ export default {
                 categories: Object.keys(queryResults[0]),
                 labels: {
                   show: true,
-                  rotate: -90,
-                  // hideOverlappingLabels: true,
+                  // rotate: -90,
+                  hideOverlappingLabels: true,
                 },
               },
               dataLabels: {
@@ -543,6 +485,16 @@ export default {
     getFilterTypes(dataType) {
       return dataType === "number" ? ["=", ">", "<", ">=", "<="] : ["=", "like"];
     },
+  },
+  mounted() {
+    Worker.worker.onmessage = (event) => {
+      console.log(event);
+      if (event.data.fileData) {
+        this.processFileResults(event.data.headers, event.data.typeCheckData);
+        this.flatFileData = event.data.fileData;
+        this.isLoading = false;
+      }
+    };
   },
 };
 </script>
