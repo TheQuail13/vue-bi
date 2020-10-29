@@ -81,7 +81,20 @@
                     :options="getFilterTypes(itm.Type)"
                     label="Filter Operator"
                   />
-                  <q-input v-model="itm.Filter.Value" label="Filter Value" @blur="computeGraphData" />
+                  <q-input
+                    v-if="itm.Filter.Operator !== 'in'"
+                    v-model="itm.Filter.Value"
+                    label="Filter Value"
+                    @blur="computeGraphData"
+                  />
+                  <q-select
+                    v-else
+                    filled
+                    v-model="itm.Filter.SelectedValues"
+                    multiple
+                    :options="getDistinctValues(itm.Name)"
+                    @blur="computeGraphData"
+                  />
                 </q-item-section>
                 <q-item-section side>
                   <q-icon name="close" @click="removeFromDroppedFilter(idx)" style="cursor: pointer;" />
@@ -225,7 +238,10 @@ export default {
         .reduce((acc, obj) => `${acc}, ${obj}`);
 
       // If any filters, generate the where clause
-      if (filterProps.length > 0 && filterProps[0].Filter.Value) {
+      if (
+        filterProps.length > 0 &&
+        (filterProps[0].Filter.Value || filterProps[0].Filter.SelectedValues.length > 0)
+      ) {
         filterClause = filterProps
           .map((itm) => {
             const colName = `${itm.Type === "number" ? `[${itm.Name}]` : `LOWER([${itm.Name}])`}`;
@@ -235,6 +251,16 @@ export default {
             } else {
               if (itm.Filter.Operator === "like") {
                 colValue = `'%${itm.Filter.Value.toLowerCase()}%'`;
+              } else if (itm.Filter.Operator === "in") {
+                let inClause = itm.Filter.SelectedValues.reduce((acc, obj) => {
+                  if (!acc) {
+                    acc = `'${obj.toLowerCase()}'`;
+                  } else {
+                    acc = `${acc}, '${obj.toLowerCase()}'`;
+                  }
+                  return acc;
+                }, "");
+                colValue = `(${inClause})`;
               } else {
                 colValue = `'${itm.Filter.Value.toLowerCase()}'`;
               }
@@ -279,6 +305,7 @@ export default {
       if (this.latestQuery !== query) {
         this.latestQuery = query;
         let qResults = alasql(query, [inputArray]);
+        console.log(qResults);
         return this.groupSumBy(qResults, xProp, yProps);
       } else {
         this.latestQuery = query;
@@ -338,6 +365,7 @@ export default {
           Filter: {
             Operator: "=",
             Value: "",
+            SelectedValues: [],
           },
           AggType: type === "string" ? "count" : "sum",
         };
