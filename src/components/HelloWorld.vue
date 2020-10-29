@@ -150,9 +150,7 @@
 </template>
 
 <script>
-import Worker from "@/xlsx-worker/index.js";
-
-// import XLSX from "xlsx";
+import ParseWorker from "@/xlsx-worker/index.js";
 import alasql from "alasql";
 import { date, format } from "quasar";
 const { capitalize } = format;
@@ -162,7 +160,6 @@ export default {
     return {
       isLoading: false,
       files: [],
-      processedFile: "",
       chartType: { name: "line", icon: "fas fa-chart-line" },
       chartTypeOptions: [
         { name: "line", icon: "fas fa-chart-line" },
@@ -175,7 +172,6 @@ export default {
       aggOptions: ["sum", "count", "avg", "max", "min"],
       filterOperators: [""],
       columnHeaders: [],
-      columnData: [],
       tableData: [],
       graphData: [
         {
@@ -216,6 +212,11 @@ export default {
   },
   methods: {
     capitalize,
+    getDistinctValues(columnName) {
+      const query = `SELECT DISTINCT ${columnName} FROM ?`;
+      const result = alasql(query, [this.flatFileData]);
+      return result.map((itm) => Object.values(itm)[0]);
+    },
     queryData(inputArray, xProp, yProps, sortProps, filterProps) {
       let filterClause;
       // Generate the columns to aggregate in the select clause
@@ -228,8 +229,16 @@ export default {
         filterClause = filterProps
           .map((itm) => {
             const colName = `${itm.Type === "number" ? `[${itm.Name}]` : `LOWER([${itm.Name}])`}`;
-
-            const colValue = itm.Type === "number" ? itm.Filter.Value : `'${itm.Filter.Value.toLowerCase()}'`;
+            let colValue;
+            if (itm.Type === "number") {
+              colValue = itm.Filter.Value;
+            } else {
+              if (itm.Filter.Operator === "like") {
+                colValue = `'%${itm.Filter.Value.toLowerCase()}%'`;
+              } else {
+                colValue = `'${itm.Filter.Value.toLowerCase()}'`;
+              }
+            }
 
             return `${colName} ${itm.Filter.Operator} ${colValue}`;
           })
@@ -295,7 +304,7 @@ export default {
     },
     parseFile() {
       this.isLoading = true;
-      Worker.send(this.files[0]);
+      ParseWorker.send(this.files[0]);
     },
     processFileResults(headers, typeCheckData) {
       let tArr = [];
@@ -334,7 +343,7 @@ export default {
         };
       });
 
-      this.columnHeaders = tArrCheck;
+      this.columnHeaders = Object.freeze(tArrCheck);
     },
     getIcon(type) {
       switch (type) {
@@ -483,15 +492,14 @@ export default {
       return dataType === "number" ? ["sum", "count", "avg", "max", "min"] : ["count"];
     },
     getFilterTypes(dataType) {
-      return dataType === "number" ? ["=", ">", "<", ">=", "<="] : ["=", "like"];
+      return dataType === "number" ? ["=", ">", "<", ">=", "<="] : ["=", "like", "in"];
     },
   },
   mounted() {
-    Worker.worker.onmessage = (event) => {
-      console.log(event);
+    ParseWorker.worker.onmessage = (event) => {
       if (event.data.fileData) {
         this.processFileResults(event.data.headers, event.data.typeCheckData);
-        this.flatFileData = event.data.fileData;
+        this.flatFileData = Object.freeze(event.data.fileData);
         this.isLoading = false;
       }
     };
