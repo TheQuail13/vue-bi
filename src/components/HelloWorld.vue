@@ -7,7 +7,7 @@
           <q-virtual-scroll style="height: 40vh;" :items="colDimensions">
             <template v-slot="{ item, index }">
               <drag style="cursor: move;" :transfer-data="{ item }">
-                <q-item :key="index" clickable class="bg-primary text-white q-my-xs rounded-borders">
+                <q-item :key="index" class="bg-primary text-white q-my-xs rounded-borders">
                   <q-item-section>
                     <q-item-label>
                       <q-icon :name="getIcon(item.DataType)" class="q-mr-sm" />{{ item.Name }}
@@ -23,7 +23,7 @@
           <q-virtual-scroll style="height: 40vh;" :items="colValues">
             <template v-slot="{ item, index }">
               <drag style="cursor: move;" :transfer-data="{ item }">
-                <q-item :key="index" clickable class="bg-green text-white q-my-xs rounded-borders">
+                <q-item :key="index" class="bg-green text-white q-my-xs rounded-borders">
                   <q-item-section>
                     <q-item-label>
                       <q-icon :name="getIcon(item.DataType)" class="q-mr-sm" />{{ item.Name }}
@@ -35,7 +35,6 @@
           </q-virtual-scroll>
         </q-list>
       </div>
-
       <div class="col-10">
         <div class="row">
           <div class="col-8 q-px-lg">
@@ -177,7 +176,7 @@
               :type="chartType.name"
               :options="graphOptions"
               :series="graphData"
-            ></apexchart>
+            />
           </div>
         </div>
       </div>
