@@ -167,7 +167,7 @@
         </div>
         <div class="row justify-center">
           <!-- <div class="col q-px-lg">
-        <q-table title="Raw Data Preview" :data="tableData" :pagination="pagination" />
+        <q-table title="Raw Data Preview" :data="tableData" :pagination="tablePagination" />
       </div> -->
           <div class="col q-px-lg">
             <apexchart
@@ -197,9 +197,8 @@ const { capitalize } = format;
 export default {
   data() {
     return {
-      isLoading: false,
-      files: [],
-      chartType: { name: "line", icon: "fas fa-chart-line" },
+      aggOptions: ["sum", "count", "avg", "max", "min"],
+      chartType: { name: "line", icon: "fas fa-chart-line", isSpecial: false },
       chartTypeOptions: [
         { name: "line", icon: "fas fa-chart-line", isSpecial: false },
         { name: "area", icon: "fas fa-chart-area", isSpecial: false },
@@ -210,10 +209,13 @@ export default {
         { name: "radar", icon: "fas fa-chart-pie", isSpecial: true },
         { name: "scatter", icon: "fas fa-chart-pie", isSpecial: false },
       ],
-      aggOptions: ["sum", "count", "avg", "max", "min"],
-      filterOperators: [""],
       columnHeaders: [],
-      tableData: [],
+      droppedArray: [],
+      droppedSortArray: [],
+      droppedFilterArray: [],
+      files: [],
+      filterOperators: [""],
+      flatFileData: [],
       graphData: [
         {
           data: [],
@@ -240,15 +242,13 @@ export default {
         column: "",
         type: "asc",
       },
-      flatFileData: [],
-      droppedArray: [],
-      droppedSortArray: [],
-      droppedFilterArray: [],
-      xAxis: {},
-      pagination: {
+      isLoading: false,
+      latestQuery: "",
+      tablePagination: {
         rowsPerPage: 10,
       },
-      latestQuery: "",
+      tableData: [],
+      xAxis: {},
     };
   },
   methods: {

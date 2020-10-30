@@ -2,20 +2,11 @@
   <q-layout view="lHh Lpr lFf">
     <q-header elevated>
       <q-toolbar>
-        <q-btn
-          flat
-          dense
-          round
-          @click="leftDrawerOpen = !leftDrawerOpen"
-          aria-label="Menu"
-          icon="menu"
-        />
-
+        <q-btn flat dense round @click="leftDrawerOpen = !leftDrawerOpen" aria-label="Menu" icon="menu" />
         <q-toolbar-title>
-          Quasar App
+          VueBI
         </q-toolbar-title>
-
-        <!-- <div>Quasar v{{ $q.version }}</div> -->
+        <div>v{{ $q.version }}</div>
       </q-toolbar>
     </q-header>
 
@@ -81,19 +72,19 @@
     </q-drawer> -->
 
     <q-page-container>
-      <HelloWorld />
+      <MasterVisual />
     </q-page-container>
   </q-layout>
 </template>
 
 <script>
-import HelloWorld from "./components/HelloWorld.vue";
+import MasterVisual from "./components/MasterVisual.vue";
 
 export default {
   name: "LayoutDefault",
 
   components: {
-    HelloWorld,
+    MasterVisual,
   },
 
   data() {
