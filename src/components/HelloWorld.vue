@@ -1,12 +1,12 @@
 <template>
   <q-page padding class="main-page">
     <div class="row justify-center q-mb-lg">
-      <div class="col-2 q-px-lg">
-        <q-list bordered>
-          <q-virtual-scroll style="max-height: 300px;" :items="columnHeaders" separator>
+      <div class="col-3 q-px-md">
+        <q-list>
+          <q-virtual-scroll style="max-height: 300px;" :items="columnHeaders">
             <template v-slot="{ item, index }">
               <drag style="cursor: move;" :transfer-data="{ item }">
-                <q-item :key="index" bordered clickable>
+                <q-item :key="index" clickable class="bg-primary text-white q-my-xs rounded-borders">
                   <q-item-section>
                     <q-item-label> <q-icon :name="getIcon(item.Type)" /> {{ item.Name }} </q-item-label>
                   </q-item-section>
@@ -104,7 +104,7 @@
           </div>
         </div>
       </div>
-      <div class="col-3 q-px-lg">
+      <div class="col-2 q-px-lg">
         <q-file
           v-model="files"
           label="Drop an excel or CSV file here"
@@ -228,7 +228,7 @@ export default {
     getDistinctValues(columnName) {
       const query = `SELECT DISTINCT ${columnName} FROM ?`;
       const result = alasql(query, [this.flatFileData]);
-      return result.map((itm) => Object.values(itm)[0]);
+      return result.map((itm) => Object.values(itm)[0]).sort();
     },
     queryData(inputArray, xProp, yProps, sortProps, filterProps) {
       let filterClause;
@@ -276,7 +276,6 @@ export default {
             }
             return acc;
           }, "");
-        // console.log(filterClause);
       }
 
       // Generate the order by clause
@@ -305,7 +304,6 @@ export default {
       if (this.latestQuery !== query) {
         this.latestQuery = query;
         let qResults = alasql(query, [inputArray]);
-        console.log(qResults);
         return this.groupSumBy(qResults, xProp, yProps);
       } else {
         this.latestQuery = query;
@@ -561,5 +559,16 @@ export default {
   background: #eee;
   border-top: 2px solid #ccc;
   border-left: 2px solid #ccc;
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.q-virtual-scroll::-webkit-scrollbar {
+  display: none !important;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.q-virtual-scroll {
+  -ms-overflow-style: none !important; /* IE and Edge */
+  scrollbar-width: none !important; /* Firefox */
 }
 </style>
