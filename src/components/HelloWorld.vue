@@ -25,10 +25,10 @@
           <div class="col q-mr-md">
             <div class="text-center"><strong>Series</strong></div>
             <q-list bordered separator class="q-mt-md">
-              <q-item v-for="(itm, idx) in droppedArray" :key="idx">
+              <q-item v-for="(itm, idx) in droppedArray" :key="idx" style="cursor: pointer;">
                 <q-item-section>{{ itm.Name }}</q-item-section>
                 <q-item-section side>
-                  <q-icon name="close" @click="removeFromDropped(idx)" style="cursor: pointer;" />
+                  <q-icon name="close" @click="removeFromDropped(idx)" />
                 </q-item-section>
                 <q-popup-edit v-model="itm.IsEditing" @before-hide="computeGraphData(true)">
                   <q-select
@@ -46,26 +46,26 @@
           <div class="col q-mr-md">
             <div class="text-center"><strong>Sorting</strong></div>
             <q-list bordered separator class="q-mt-md">
-              <q-item v-for="(itm, idx) in droppedSortArray" :key="idx">
+              <q-item v-for="(itm, idx) in droppedSortArray" :key="idx" style="cursor: pointer;">
                 <q-item-section>{{ itm.Name }}</q-item-section>
-                <q-item-section>
+                <q-popup-edit v-model="itm.IsEditing" @before-hide="computeGraphData(true)">
                   <q-select
                     outlined
                     v-model="itm.Sort.Direction"
                     :options="['asc', 'desc']"
                     label="Sort Direction"
-                    @input="computeGraphData"
+                    class="q-my-xs"
                   />
                   <q-select
                     outlined
                     v-model="itm.Sort.Aggregation"
                     :options="['sum', 'none']"
                     label="Sort Aggregation"
-                    @input="computeGraphData"
+                    class="q-my-xs"
                   />
-                </q-item-section>
+                </q-popup-edit>
                 <q-item-section side>
-                  <q-icon name="close" @click="removeFromDroppedSort(idx)" style="cursor: pointer;" />
+                  <q-icon name="close" @click="removeFromDroppedSort(idx)" />
                 </q-item-section>
               </q-item>
             </q-list>
@@ -73,20 +73,21 @@
           <div class="col">
             <div class="text-center"><strong>Filters</strong></div>
             <q-list bordered separator class="q-mt-md">
-              <q-item v-for="(itm, idx) in droppedFilterArray" :key="idx">
+              <q-item v-for="(itm, idx) in droppedFilterArray" :key="idx" style="cursor: pointer;">
                 <q-item-section>{{ itm.Name }}</q-item-section>
-                <q-item-section>
+                <q-popup-edit v-model="itm.IsEditing" @before-hide="computeGraphData(true)">
                   <q-select
                     outlined
                     v-model="itm.Filter.Operator"
                     :options="getFilterTypes(itm.Type)"
                     label="Filter Operator"
+                    class="q-my-xs"
                   />
                   <q-input
                     v-if="itm.Filter.Operator !== 'in'"
                     v-model="itm.Filter.Value"
                     label="Filter Value"
-                    @blur="computeGraphData"
+                    class="q-my-xs"
                   />
                   <q-select
                     v-else
@@ -94,11 +95,11 @@
                     v-model="itm.Filter.SelectedValues"
                     multiple
                     :options="getDistinctValues(itm.Name)"
-                    @blur="computeGraphData"
+                    class="q-my-xs"
                   />
-                </q-item-section>
+                </q-popup-edit>
                 <q-item-section side>
-                  <q-icon name="close" @click="removeFromDroppedFilter(idx)" style="cursor: pointer;" />
+                  <q-icon name="close" @click="removeFromDroppedFilter(idx)" />
                 </q-item-section>
               </q-item>
             </q-list>
@@ -421,17 +422,12 @@ export default {
         );
 
         if (queryResults) {
-          if (this.chartType.name === "pie") {
-            this.droppedArray.splice(1);
-          }
-
           if (
             this.chartType.name === "pie" ||
             this.chartType.name === "donut" ||
             this.chartType.name === "polarArea" ||
             this.chartType.name === "radar"
           ) {
-            this.graphData = null;
             this.graphData = Object.values(queryResults[0]);
           } else {
             this.graphData = queryResults.map((itm, idx) => ({
@@ -446,7 +442,6 @@ export default {
             this.chartType.name === "polarArea" ||
             this.chartType.name === "radar"
           ) {
-            this.graphOptions = null;
             this.graphOptions = {
               labels: Object.keys(queryResults[0]),
             };
@@ -504,11 +499,12 @@ export default {
       if (
         this.chartType.name === "pie" ||
         this.chartType.name === "donut" ||
-        this.chartType.name === "polarArea"
+        this.chartType.name === "polarArea" ||
+        this.chartType.name === "radar"
       ) {
         this.droppedArray.length = 1;
       }
-      this.computeGraphData();
+      this.computeGraphData(true);
     },
     removeFromDropped(idx) {
       this.droppedArray.splice(idx, 1);
