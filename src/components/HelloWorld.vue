@@ -27,18 +27,19 @@
             <q-list bordered separator class="q-mt-md">
               <q-item v-for="(itm, idx) in droppedArray" :key="idx">
                 <q-item-section>{{ itm.Name }}</q-item-section>
-                <q-item-section>
+                <q-item-section side>
+                  <q-icon name="close" @click="removeFromDropped(idx)" style="cursor: pointer;" />
+                </q-item-section>
+                <q-popup-edit v-model="itm.IsEditing" @before-hide="computeGraphData(true)">
                   <q-select
                     outlined
                     v-model="itm.AggType"
                     :options="getAggTypes(itm.Type)"
                     label="Select an aggregation type"
-                    @input="computeGraphData"
                   />
-                </q-item-section>
-                <q-item-section side>
-                  <q-icon name="close" @click="removeFromDropped(idx)" style="cursor: pointer;" />
-                </q-item-section>
+                  <q-input label="Label" v-model="itm.Label" outlined class="q-my-xs" />
+                  <q-input label="Color" outlined class="q-my-xs" />
+                </q-popup-edit>
               </q-item>
             </q-list>
           </div>
@@ -181,6 +182,8 @@ export default {
         { name: "pie", icon: "fas fa-chart-pie" },
         { name: "donut", icon: "fas fa-chart-pie" },
         { name: "polarArea", icon: "fas fa-chart-pie" },
+        { name: "radar", icon: "fas fa-chart-pie" },
+        { name: "scatter", icon: "fas fa-chart-pie" },
       ],
       aggOptions: ["sum", "count", "avg", "max", "min"],
       filterOperators: [""],
@@ -230,8 +233,9 @@ export default {
       const result = alasql(query, [this.flatFileData]);
       return result.map((itm) => Object.values(itm)[0]).sort();
     },
-    queryData(inputArray, xProp, yProps, sortProps, filterProps) {
+    queryData(reprocess, inputArray, xProp, yProps, sortProps, filterProps) {
       let filterClause;
+
       // Generate the columns to aggregate in the select clause
       let aggClause = yProps
         .map((itm) => `${itm.AggType}([${itm.Name}]) AS [${itm.Name}]`)
@@ -294,14 +298,14 @@ export default {
           : 1;
 
       // Compile executed query
-      const query = `SELECT ${xProp.Name}, ${aggClause} FROM ? ${
+      const query = `SELECT [${xProp.Name}], ${aggClause} FROM ? ${
         filterProps.length > 0 ? filterClause : ""
-      } GROUP BY ${xProp.Name} ORDER BY ${sortClause}`;
+      } GROUP BY [${xProp.Name}] ORDER BY ${sortClause}`;
 
       console.log(query);
 
       // If current query matches previous one, don't re-process
-      if (this.latestQuery !== query) {
+      if (this.latestQuery !== query || reprocess) {
         this.latestQuery = query;
         let qResults = alasql(query, [inputArray]);
         return this.groupSumBy(qResults, xProp, yProps);
@@ -355,6 +359,7 @@ export default {
 
         return {
           Name: typeof headers[rIdx] === "undefined" ? `Column${rIdx}` : headers[rIdx],
+          Label: null,
           Type: type,
           Sort: {
             Direction: "asc",
@@ -402,11 +407,12 @@ export default {
         this.droppedFilterArray.push(data.item);
       }
     },
-    computeGraphData() {
+    computeGraphData(reprocess) {
       if (this.xAxis.Name && this.droppedArray.length > 0) {
         this.isLoading = true;
 
         let queryResults = this.queryData(
+          reprocess,
           this.flatFileData,
           this.xAxis,
           this.droppedArray,
@@ -422,21 +428,23 @@ export default {
           if (
             this.chartType.name === "pie" ||
             this.chartType.name === "donut" ||
-            this.chartType.name === "polarArea"
+            this.chartType.name === "polarArea" ||
+            this.chartType.name === "radar"
           ) {
             this.graphData = null;
             this.graphData = Object.values(queryResults[0]);
           } else {
             this.graphData = queryResults.map((itm, idx) => ({
               data: Object.values(itm),
-              name: this.droppedArray[idx].Name,
+              name: this.droppedArray[idx].Label ?? this.droppedArray[idx].Name,
             }));
           }
 
           if (
             this.chartType.name === "pie" ||
             this.chartType.name === "donut" ||
-            this.chartType.name === "polarArea"
+            this.chartType.name === "polarArea" ||
+            this.chartType.name === "radar"
           ) {
             this.graphOptions = null;
             this.graphOptions = {
