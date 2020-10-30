@@ -28,7 +28,7 @@
               <q-item v-for="(itm, idx) in droppedArray" :key="idx" style="cursor: pointer;">
                 <q-item-section>{{ itm.Name }}</q-item-section>
                 <q-item-section side>
-                  <q-icon name="close" @click="removeFromDropped(idx)" />
+                  <q-icon name="close" @click="removeFromArray('droppedArray', idx)" />
                 </q-item-section>
                 <q-popup-edit v-model="itm.IsEditing" @before-hide="computeGraphData(true)">
                   <q-select
@@ -65,7 +65,7 @@
                   />
                 </q-popup-edit>
                 <q-item-section side>
-                  <q-icon name="close" @click="removeFromDroppedSort(idx)" />
+                  <q-icon name="close" @click="removeFromArray('droppedSortArray', idx)" />
                 </q-item-section>
               </q-item>
             </q-list>
@@ -99,7 +99,7 @@
                   />
                 </q-popup-edit>
                 <q-item-section side>
-                  <q-icon name="close" @click="removeFromDroppedFilter(idx)" />
+                  <q-icon name="close" @click="removeFromArray('droppedFilterArray', idx)" />
                 </q-item-section>
               </q-item>
             </q-list>
@@ -177,14 +177,14 @@ export default {
       files: [],
       chartType: { name: "line", icon: "fas fa-chart-line" },
       chartTypeOptions: [
-        { name: "line", icon: "fas fa-chart-line" },
-        { name: "area", icon: "fas fa-chart-area" },
-        { name: "bar", icon: "fas fa-chart-bar" },
-        { name: "pie", icon: "fas fa-chart-pie" },
-        { name: "donut", icon: "fas fa-chart-pie" },
-        { name: "polarArea", icon: "fas fa-chart-pie" },
-        { name: "radar", icon: "fas fa-chart-pie" },
-        { name: "scatter", icon: "fas fa-chart-pie" },
+        { name: "line", icon: "fas fa-chart-line", isSpecial: false },
+        { name: "area", icon: "fas fa-chart-area", isSpecial: false },
+        { name: "bar", icon: "fas fa-chart-bar", isSpecial: true },
+        { name: "pie", icon: "fas fa-chart-pie", isSpecial: true },
+        { name: "donut", icon: "fas fa-chart-pie", isSpecial: true },
+        { name: "polarArea", icon: "fas fa-chart-pie", isSpecial: true },
+        { name: "radar", icon: "fas fa-chart-pie", isSpecial: true },
+        { name: "scatter", icon: "fas fa-chart-pie", isSpecial: false },
       ],
       aggOptions: ["sum", "count", "avg", "max", "min"],
       filterOperators: [""],
@@ -422,12 +422,7 @@ export default {
         );
 
         if (queryResults) {
-          if (
-            this.chartType.name === "pie" ||
-            this.chartType.name === "donut" ||
-            this.chartType.name === "polarArea" ||
-            this.chartType.name === "radar"
-          ) {
+          if (this.chartType.isSpecial) {
             this.graphData = Object.values(queryResults[0]);
           } else {
             this.graphData = queryResults.map((itm, idx) => ({
@@ -436,12 +431,7 @@ export default {
             }));
           }
 
-          if (
-            this.chartType.name === "pie" ||
-            this.chartType.name === "donut" ||
-            this.chartType.name === "polarArea" ||
-            this.chartType.name === "radar"
-          ) {
+          if (this.chartType.isSpecial) {
             this.graphOptions = {
               labels: Object.keys(queryResults[0]),
             };
@@ -496,27 +486,14 @@ export default {
       }
     },
     setChartType() {
-      if (
-        this.chartType.name === "pie" ||
-        this.chartType.name === "donut" ||
-        this.chartType.name === "polarArea" ||
-        this.chartType.name === "radar"
-      ) {
+      if (this.chartType.isSpecial) {
         this.droppedArray.length = 1;
       }
       this.computeGraphData(true);
     },
-    removeFromDropped(idx) {
-      this.droppedArray.splice(idx, 1);
-      this.computeGraphData();
-    },
-    removeFromDroppedSort(idx) {
-      this.droppedSortArray.splice(idx, 1);
-      this.computeGraphData();
-    },
-    removeFromDroppedFilter(idx) {
-      this.droppedFilterArray.splice(idx, 1);
-      this.computeGraphData();
+    removeFromArray(arrayName, idx) {
+      this[arrayName].splice(idx, 1);
+      this.computeGraphData(true);
     },
     getAggTypes(dataType) {
       return dataType === "number" ? ["sum", "count", "avg", "max", "min"] : ["count"];
