@@ -8,7 +8,7 @@
               <drag style="cursor: move;" :transfer-data="{ item }">
                 <q-item :key="index" clickable class="bg-primary text-white q-my-xs rounded-borders">
                   <q-item-section>
-                    <q-item-label> <q-icon :name="getIcon(item.Type)" /> {{ item.Name }} </q-item-label>
+                    <q-item-label> <q-icon :name="getIcon(item.DataType)" /> {{ item.Name }} </q-item-label>
                   </q-item-section>
                 </q-item>
               </drag>
@@ -34,7 +34,7 @@
                   <q-select
                     outlined
                     v-model="itm.AggType"
-                    :options="getAggTypes(itm.Type)"
+                    :options="getAggTypes(itm.DataType)"
                     label="Select an aggregation type"
                   />
                   <q-input label="Label" v-model="itm.Label" outlined class="q-my-xs" />
@@ -79,7 +79,7 @@
                   <q-select
                     outlined
                     v-model="itm.Filter.Operator"
-                    :options="getFilterTypes(itm.Type)"
+                    :options="getFilterTypes(itm.DataType)"
                     label="Filter Operator"
                     class="q-my-xs"
                   />
@@ -179,7 +179,7 @@ export default {
       chartTypeOptions: [
         { name: "line", icon: "fas fa-chart-line", isSpecial: false },
         { name: "area", icon: "fas fa-chart-area", isSpecial: false },
-        { name: "bar", icon: "fas fa-chart-bar", isSpecial: true },
+        { name: "bar", icon: "fas fa-chart-bar", isSpecial: false },
         { name: "pie", icon: "fas fa-chart-pie", isSpecial: true },
         { name: "donut", icon: "fas fa-chart-pie", isSpecial: true },
         { name: "polarArea", icon: "fas fa-chart-pie", isSpecial: true },
@@ -249,9 +249,9 @@ export default {
       ) {
         filterClause = filterProps
           .map((itm) => {
-            const colName = `${itm.Type === "number" ? `[${itm.Name}]` : `LOWER([${itm.Name}])`}`;
+            const colName = `${itm.DataType === "number" ? `[${itm.Name}]` : `LOWER([${itm.Name}])`}`;
             let colValue;
-            if (itm.Type === "number") {
+            if (itm.DataType === "number") {
               colValue = itm.Filter.Value;
             } else {
               if (itm.Filter.Operator === "like") {
@@ -307,6 +307,7 @@ export default {
 
       // If current query matches previous one, don't re-process
       if (this.latestQuery !== query || reprocess) {
+        console.log("Query executed");
         this.latestQuery = query;
         let qResults = alasql(query, [inputArray]);
         return this.groupSumBy(qResults, xProp, yProps);
@@ -361,7 +362,7 @@ export default {
         return {
           Name: typeof headers[rIdx] === "undefined" ? `Column${rIdx}` : headers[rIdx],
           Label: null,
-          Type: type,
+          DataType: type,
           Sort: {
             Direction: "asc",
             Aggregation: "none",
@@ -371,7 +372,7 @@ export default {
             Value: "",
             SelectedValues: [],
           },
-          AggType: type === "string" ? "count" : "sum",
+          AggType: type === "string" || type === "date" ? "count" : "sum",
         };
       });
 
@@ -500,6 +501,20 @@ export default {
     },
     getFilterTypes(dataType) {
       return dataType === "number" ? ["=", ">", "<", ">=", "<="] : ["=", "like", "in"];
+    },
+  },
+  computed: {
+    colDimensions() {
+      if (this.columnHeaders.length > 0) {
+        return this.columnHeaders.filter((x) => x.DataType !== "number").sort();
+      }
+      return [];
+    },
+    colValues() {
+      if (this.columnHeaders.length > 0) {
+        return this.columnHeaders.filter((x) => x.DataType === "number").sort();
+      }
+      return [];
     },
   },
   mounted() {
