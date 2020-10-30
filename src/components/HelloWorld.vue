@@ -1,14 +1,33 @@
 <template>
   <q-page padding class="main-page">
-    <div class="row justify-center q-mb-lg">
-      <div class="col-3 q-px-md">
+    <div class="row justify-center">
+      <div class="col-2">
         <q-list>
-          <q-virtual-scroll style="max-height: 300px;" :items="columnHeaders">
+          <q-item-label header><strong>Dimensions</strong></q-item-label>
+          <q-virtual-scroll style="height: 40vh;" :items="colDimensions">
             <template v-slot="{ item, index }">
               <drag style="cursor: move;" :transfer-data="{ item }">
                 <q-item :key="index" clickable class="bg-primary text-white q-my-xs rounded-borders">
                   <q-item-section>
-                    <q-item-label> <q-icon :name="getIcon(item.DataType)" /> {{ item.Name }} </q-item-label>
+                    <q-item-label>
+                      <q-icon :name="getIcon(item.DataType)" class="q-mr-sm" />{{ item.Name }}
+                    </q-item-label>
+                  </q-item-section>
+                </q-item>
+              </drag>
+            </template>
+          </q-virtual-scroll>
+        </q-list>
+        <q-list>
+          <q-item-label header><strong>Values</strong></q-item-label>
+          <q-virtual-scroll style="height: 40vh;" :items="colValues">
+            <template v-slot="{ item, index }">
+              <drag style="cursor: move;" :transfer-data="{ item }">
+                <q-item :key="index" clickable class="bg-green text-white q-my-xs rounded-borders">
+                  <q-item-section>
+                    <q-item-label>
+                      <q-icon :name="getIcon(item.DataType)" class="q-mr-sm" />{{ item.Name }}
+                    </q-item-label>
                   </q-item-section>
                 </q-item>
               </drag>
@@ -16,148 +35,154 @@
           </q-virtual-scroll>
         </q-list>
       </div>
-      <div class="col-7 q-px-lg">
-        <drop class="drop q-mr-md" @drop="handleXDrop">{{ xAxis.Name ? xAxis.Name : "X-Axis" }}</drop>
-        <drop class="drop q-mr-md" @drop="handleYDrop">Series</drop>
-        <drop class="drop q-mr-md" @drop="handleSortDrop">Sort By</drop>
-        <drop class="drop" @drop="handleFilterDrop">Filter</drop>
-        <div class="row q-mt-md">
-          <div class="col q-mr-md">
-            <div class="text-center"><strong>Series</strong></div>
-            <q-list bordered separator class="q-mt-md">
-              <q-item v-for="(itm, idx) in droppedArray" :key="idx" style="cursor: pointer;">
-                <q-item-section>{{ itm.Name }}</q-item-section>
-                <q-item-section side>
-                  <q-icon name="close" @click="removeFromArray('droppedArray', idx)" />
-                </q-item-section>
-                <q-popup-edit v-model="itm.IsEditing" @before-hide="computeGraphData(true)">
-                  <q-select
-                    outlined
-                    v-model="itm.AggType"
-                    :options="getAggTypes(itm.DataType)"
-                    label="Select an aggregation type"
-                  />
-                  <q-input label="Label" v-model="itm.Label" outlined class="q-my-xs" />
-                  <q-input label="Color" outlined class="q-my-xs" />
-                </q-popup-edit>
-              </q-item>
-            </q-list>
+
+      <div class="col-10">
+        <div class="row">
+          <div class="col-8 q-px-lg">
+            <drop class="drop q-mr-md" @drop="handleXDrop">{{ xAxis.Name ? xAxis.Name : "X-Axis" }}</drop>
+            <drop class="drop q-mr-md" @drop="handleYDrop">Series</drop>
+            <drop class="drop q-mr-md" @drop="handleSortDrop">Sort By</drop>
+            <drop class="drop" @drop="handleFilterDrop">Filter</drop>
+            <div class="row q-mt-md">
+              <div class="col q-mr-md">
+                <div class="text-center"><strong>Series</strong></div>
+                <q-list bordered separator class="q-mt-md">
+                  <q-item v-for="(itm, idx) in droppedArray" :key="idx" style="cursor: pointer;">
+                    <q-item-section>{{ itm.Name }}</q-item-section>
+                    <q-item-section side>
+                      <q-icon name="close" @click="removeFromArray('droppedArray', idx)" />
+                    </q-item-section>
+                    <q-popup-edit v-model="itm.IsEditing" @before-hide="computeGraphData(true)">
+                      <q-select
+                        outlined
+                        v-model="itm.AggType"
+                        :options="getAggTypes(itm.DataType)"
+                        label="Select an aggregation type"
+                      />
+                      <q-input label="Label" v-model="itm.Label" outlined class="q-my-xs" />
+                      <q-input label="Color" outlined class="q-my-xs" />
+                    </q-popup-edit>
+                  </q-item>
+                </q-list>
+              </div>
+              <div class="col q-mr-md">
+                <div class="text-center"><strong>Sorting</strong></div>
+                <q-list bordered separator class="q-mt-md">
+                  <q-item v-for="(itm, idx) in droppedSortArray" :key="idx" style="cursor: pointer;">
+                    <q-item-section>{{ itm.Name }}</q-item-section>
+                    <q-popup-edit v-model="itm.IsEditing" @before-hide="computeGraphData(true)">
+                      <q-select
+                        outlined
+                        v-model="itm.Sort.Direction"
+                        :options="['asc', 'desc']"
+                        label="Sort Direction"
+                        class="q-my-xs"
+                      />
+                      <q-select
+                        outlined
+                        v-model="itm.Sort.Aggregation"
+                        :options="['sum', 'none']"
+                        label="Sort Aggregation"
+                        class="q-my-xs"
+                      />
+                    </q-popup-edit>
+                    <q-item-section side>
+                      <q-icon name="close" @click="removeFromArray('droppedSortArray', idx)" />
+                    </q-item-section>
+                  </q-item>
+                </q-list>
+              </div>
+              <div class="col">
+                <div class="text-center"><strong>Filters</strong></div>
+                <q-list bordered separator class="q-mt-md">
+                  <q-item v-for="(itm, idx) in droppedFilterArray" :key="idx" style="cursor: pointer;">
+                    <q-item-section>{{ itm.Name }}</q-item-section>
+                    <q-popup-edit v-model="itm.IsEditing" @before-hide="computeGraphData(true)">
+                      <q-select
+                        outlined
+                        v-model="itm.Filter.Operator"
+                        :options="getFilterTypes(itm.DataType)"
+                        label="Filter Operator"
+                        class="q-my-xs"
+                      />
+                      <q-input
+                        v-if="itm.Filter.Operator !== 'in'"
+                        v-model="itm.Filter.Value"
+                        label="Filter Value"
+                        class="q-my-xs"
+                      />
+                      <q-select
+                        v-else
+                        filled
+                        v-model="itm.Filter.SelectedValues"
+                        multiple
+                        :options="getDistinctValues(itm.Name)"
+                        class="q-my-xs"
+                      />
+                    </q-popup-edit>
+                    <q-item-section side>
+                      <q-icon name="close" @click="removeFromArray('droppedFilterArray', idx)" />
+                    </q-item-section>
+                  </q-item>
+                </q-list>
+              </div>
+            </div>
           </div>
-          <div class="col q-mr-md">
-            <div class="text-center"><strong>Sorting</strong></div>
-            <q-list bordered separator class="q-mt-md">
-              <q-item v-for="(itm, idx) in droppedSortArray" :key="idx" style="cursor: pointer;">
-                <q-item-section>{{ itm.Name }}</q-item-section>
-                <q-popup-edit v-model="itm.IsEditing" @before-hide="computeGraphData(true)">
-                  <q-select
-                    outlined
-                    v-model="itm.Sort.Direction"
-                    :options="['asc', 'desc']"
-                    label="Sort Direction"
-                    class="q-my-xs"
-                  />
-                  <q-select
-                    outlined
-                    v-model="itm.Sort.Aggregation"
-                    :options="['sum', 'none']"
-                    label="Sort Aggregation"
-                    class="q-my-xs"
-                  />
-                </q-popup-edit>
-                <q-item-section side>
-                  <q-icon name="close" @click="removeFromArray('droppedSortArray', idx)" />
-                </q-item-section>
-              </q-item>
-            </q-list>
+          <div class="col-4 q-px-lg">
+            <q-file
+              v-model="files"
+              label="Drop an excel or CSV file here"
+              filled
+              max-files="1"
+              multiple
+              clearable
+              @input="parseFile"
+            >
+              <!-- <template v-slot:after>
+            <q-btn round dense flat icon="send" @click.prevent="parseFile" />
+          </template> -->
+            </q-file>
+            <q-select
+              outlined
+              v-model="chartType"
+              :options="chartTypeOptions"
+              label="Select a chart type"
+              class="q-mt-md"
+              map-options
+              option-label="name"
+              option-value="name"
+              @input="setChartType"
+            >
+              <template v-slot:option="scope">
+                <q-item v-bind="scope.itemProps" v-on="scope.itemEvents">
+                  <q-item-section>
+                    <q-item-label>{{ capitalize(scope.opt.name) }}</q-item-label>
+                  </q-item-section>
+                  <q-item-section side>
+                    <q-icon :name="scope.opt.icon" />
+                  </q-item-section>
+                </q-item>
+              </template>
+            </q-select>
           </div>
-          <div class="col">
-            <div class="text-center"><strong>Filters</strong></div>
-            <q-list bordered separator class="q-mt-md">
-              <q-item v-for="(itm, idx) in droppedFilterArray" :key="idx" style="cursor: pointer;">
-                <q-item-section>{{ itm.Name }}</q-item-section>
-                <q-popup-edit v-model="itm.IsEditing" @before-hide="computeGraphData(true)">
-                  <q-select
-                    outlined
-                    v-model="itm.Filter.Operator"
-                    :options="getFilterTypes(itm.DataType)"
-                    label="Filter Operator"
-                    class="q-my-xs"
-                  />
-                  <q-input
-                    v-if="itm.Filter.Operator !== 'in'"
-                    v-model="itm.Filter.Value"
-                    label="Filter Value"
-                    class="q-my-xs"
-                  />
-                  <q-select
-                    v-else
-                    filled
-                    v-model="itm.Filter.SelectedValues"
-                    multiple
-                    :options="getDistinctValues(itm.Name)"
-                    class="q-my-xs"
-                  />
-                </q-popup-edit>
-                <q-item-section side>
-                  <q-icon name="close" @click="removeFromArray('droppedFilterArray', idx)" />
-                </q-item-section>
-              </q-item>
-            </q-list>
+        </div>
+        <div class="row justify-center">
+          <!-- <div class="col q-px-lg">
+        <q-table title="Raw Data Preview" :data="tableData" :pagination="pagination" />
+      </div> -->
+          <div class="col q-px-lg">
+            <apexchart
+              height="750"
+              width="100%"
+              :type="chartType.name"
+              :options="graphOptions"
+              :series="graphData"
+            ></apexchart>
           </div>
         </div>
       </div>
-      <div class="col-2 q-px-lg">
-        <q-file
-          v-model="files"
-          label="Drop an excel or CSV file here"
-          filled
-          max-files="1"
-          multiple
-          clearable
-          @input="parseFile"
-        >
-          <!-- <template v-slot:after>
-            <q-btn round dense flat icon="send" @click.prevent="parseFile" />
-          </template> -->
-        </q-file>
-        <q-select
-          outlined
-          v-model="chartType"
-          :options="chartTypeOptions"
-          label="Select a chart type"
-          class="q-mt-md"
-          map-options
-          option-label="name"
-          option-value="name"
-          @input="setChartType"
-        >
-          <template v-slot:option="scope">
-            <q-item v-bind="scope.itemProps" v-on="scope.itemEvents">
-              <q-item-section>
-                <q-item-label>{{ capitalize(scope.opt.name) }}</q-item-label>
-              </q-item-section>
-              <q-item-section side>
-                <q-icon :name="scope.opt.icon" />
-              </q-item-section>
-            </q-item>
-          </template>
-        </q-select>
-      </div>
     </div>
-    <div class="row justify-center">
-      <!-- <div class="col q-px-lg">
-        <q-table title="Raw Data Preview" :data="tableData" :pagination="pagination" />
-      </div> -->
-      <div class="col q-px-lg">
-        <apexchart
-          height="750"
-          width="100%"
-          :type="chartType.name"
-          :options="graphOptions"
-          :series="graphData"
-        ></apexchart>
-      </div>
-    </div>
+
     <q-inner-loading :showing="isLoading">
       <q-spinner-grid size="125px" color="primary" />
     </q-inner-loading>
@@ -506,13 +531,17 @@ export default {
   computed: {
     colDimensions() {
       if (this.columnHeaders.length > 0) {
-        return this.columnHeaders.filter((x) => x.DataType !== "number").sort();
+        return this.columnHeaders
+          .filter((x) => x.DataType !== "number")
+          .sort((a, b) => a.Name.localeCompare(b.Name));
       }
       return [];
     },
     colValues() {
       if (this.columnHeaders.length > 0) {
-        return this.columnHeaders.filter((x) => x.DataType === "number").sort();
+        return this.columnHeaders
+          .filter((x) => x.DataType === "number")
+          .sort((a, b) => a.Name.localeCompare(b.Name));
       }
       return [];
     },
