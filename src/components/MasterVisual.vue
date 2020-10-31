@@ -42,9 +42,15 @@
             <drop class="drop q-mr-md" @drop="handleXDrop">{{
               selectedXaxisDimension.Name ? selectedXaxisDimension.Name : "X-Axis"
             }}</drop>
-            <drop class="drop q-mr-md" @drop="handleYDrop">Series</drop>
-            <drop class="drop q-mr-md" @drop="handleSortDrop">Sort By</drop>
-            <drop class="drop" @drop="handleFilterDrop">Filter</drop>
+            <drop class="drop q-mr-md" @drop="handleColumnDrop('selectedDataSeries', true, ...arguments)">
+              Series
+            </drop>
+            <drop class="drop q-mr-md" @drop="handleColumnDrop('selectedSortSeries', true, ...arguments)">
+              Sort By
+            </drop>
+            <drop class="drop" @drop="handleColumnDrop('selectedFilterSeries', false, ...arguments)">
+              Filter
+            </drop>
             <div class="row q-mt-md">
               <div class="col q-mr-md">
                 <div class="text-center"><strong>Series</strong></div>
@@ -181,7 +187,7 @@
             <apexchart
               height="750"
               width="100%"
-              :type="chartType.name"
+              :type="chartType.type"
               :options="graphOptions"
               :series="graphData"
             />
@@ -191,7 +197,7 @@
     </div>
 
     <q-page-sticky position="bottom-right" :offset="[25, 25]">
-      <q-btn fab icon="airplay" color="info" @click="parseDataForTable" />
+      <q-btn fab icon="airplay" color="info" @click="forceRender" />
     </q-page-sticky>
 
     <q-dialog v-model="showTable" full-width>
@@ -225,15 +231,17 @@ export default {
       aggOptions: ["sum", "count", "avg", "max", "min"],
       chartType: { name: "line", icon: "fas fa-chart-line", isSpecial: false },
       chartTypeOptions: [
-        { name: "line", icon: "fas fa-chart-line", isSpecial: false },
-        { name: "area", icon: "fas fa-chart-area", isSpecial: false },
-        { name: "bar", icon: "fas fa-chart-bar", isSpecial: false },
-        { name: "pie", icon: "fas fa-chart-pie", isSpecial: true },
-        { name: "donut", icon: "fas fa-chart-pie", isSpecial: true },
-        { name: "polarArea", icon: "fas fa-chart-pie", isSpecial: true },
-        { name: "radar", icon: "fas fa-chart-pie", isSpecial: true },
-        { name: "scatter", icon: "fas fa-chart-pie", isSpecial: false },
+        { name: "Line", type: "line", icon: "fas fa-chart-line", isSpecial: false },
+        { name: "Area", type: "area", icon: "fas fa-chart-area", isSpecial: false },
+        { name: "Bar", type: "bar", icon: "fas fa-chart-bar", isSpecial: false },
+        { name: "Horizontal Bar", type: "bar", icon: "fas fa-chart-bar", isSpecial: false },
+        { name: "Pie", type: "pie", icon: "fas fa-chart-pie", isSpecial: true },
+        { name: "Donut", type: "donut", icon: "fas fa-chart-pie", isSpecial: true },
+        { name: "PolarArea", type: "polarArea", icon: "fas fa-chart-pie", isSpecial: true },
+        { name: "Radar", type: "radar", icon: "fas fa-chart-pie", isSpecial: true },
+        { name: "Scatter", type: "scatter", icon: "fas fa-chart-pie", isSpecial: false },
       ],
+      baseColorPalette: ["#008FFB", "#00E396", "#FEB019", "#FF4560", "#775DD0"],
       columnHeaders: [],
       files: [],
       filterOperators: [""],
@@ -245,6 +253,7 @@ export default {
       ],
       graphOptions: {
         chart: {
+          id: "vuebi-chart",
           animations: {
             enabled: false,
           },
@@ -259,6 +268,7 @@ export default {
             },
           },
         },
+        colors: ["#008FFB", "#00E396", "#FEB019", "#FF4560", "#775DD0"],
       },
       graphSortOptions: {
         column: "",
@@ -276,6 +286,9 @@ export default {
   },
   methods: {
     capitalize,
+    forceRender() {
+      this.$apexcharts.exec("vuebi-chart", "render", null);
+    },
     getDistinctValues(columnName) {
       const query = `SELECT DISTINCT ${columnName} FROM ?`;
       const result = alasql(query, [this.flatFileData]);
@@ -385,22 +398,22 @@ export default {
       XlsxParseWorker.send(this.files[0]);
     },
     processFileResults(headers, typeCheckData) {
-      let tArr = [];
+      let dataTypeArr = [];
       typeCheckData.map((oRow, oIdx) => {
         if (oIdx > 0) {
           oRow.map((iRow, iIdx) => {
             let t = Object.prototype.toString.call(iRow) === "[object Date]";
             let ft = t === true ? "date" : typeof iRow;
 
-            if (typeof tArr[iIdx] === "undefined") {
-              tArr[iIdx] = [ft];
+            if (typeof dataTypeArr[iIdx] === "undefined") {
+              dataTypeArr[iIdx] = [ft];
             } else {
-              tArr[iIdx].push(ft);
+              dataTypeArr[iIdx].push(ft);
             }
           });
         }
       });
-      let tArrCheck = tArr.map((row, rIdx) => {
+      let dataTypeArrCheck = dataTypeArr.map((row, rIdx) => {
         let type =
           row.filter((v, i, a) => a.indexOf(v) === i).length > 1
             ? "string"
@@ -424,7 +437,7 @@ export default {
         };
       });
 
-      this.columnHeaders = Object.freeze(tArrCheck);
+      this.columnHeaders = Object.freeze(dataTypeArrCheck);
     },
     getIcon(type) {
       switch (type) {
@@ -440,21 +453,12 @@ export default {
       this.selectedXaxisDimension = data.item;
       this.computeGraphData();
     },
-    handleYDrop(data) {
-      if (!this.selectedDataSeries.includes(data.item)) {
-        this.selectedDataSeries.push(data.item);
-        this.computeGraphData();
-      }
-    },
-    handleSortDrop(data) {
-      if (!this.selectedSortSeries.includes(data.item)) {
-        this.selectedSortSeries.push(data.item);
-        this.computeGraphData();
-      }
-    },
-    handleFilterDrop(data) {
-      if (!this.selectedFilterSeries.includes(data.item)) {
-        this.selectedFilterSeries.push(data.item);
+    handleColumnDrop(targetArray, reprocess, transferData) {
+      if (!this[targetArray].includes(transferData.item)) {
+        this[targetArray].push(transferData.item);
+        if (reprocess) {
+          this.computeGraphData();
+        }
       }
     },
     computeGraphData(reprocess) {
@@ -487,13 +491,14 @@ export default {
           } else {
             this.graphOptions = {
               chart: {
+                id: "vuebi-chart",
                 animations: {
                   enabled: true,
                 },
               },
               plotOptions: {
                 bar: {
-                  // horizontal: true,
+                  horizontal: this.chartType.name === "Horizontal Bar",
                   dataLabels: {
                     position: "top",
                   },
@@ -527,6 +532,7 @@ export default {
                   formatter: (x) => x.toLocaleString(),
                 },
               },
+              colors: this.baseColorPalette,
             };
           }
         }
