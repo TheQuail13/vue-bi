@@ -2,7 +2,12 @@
   <q-page padding class="main-page">
     <div class="row justify-center">
       <div class="col-2">
-        <q-btn color="green" label="Add Calculated Field" class="full-width" />
+        <q-btn
+          color="green"
+          label="Add Calculated Field"
+          class="full-width"
+          @click="showCalculatedField = true"
+        />
         <q-list>
           <q-item-label header><strong>Dimensions</strong></q-item-label>
           <q-virtual-scroll style="height: 40vh;" :items="colDimensions">
@@ -208,6 +213,10 @@
       </q-card>
     </q-dialog>
 
+    <q-dialog v-model="showCalculatedField" full-width>
+      <calculated-field-edit :columns="columnHeaders" />
+    </q-dialog>
+
     <q-inner-loading :showing="isLoading">
       <q-spinner-grid size="125px" color="primary" />
     </q-inner-loading>
@@ -216,30 +225,32 @@
 
 <script>
 import DataTable from "./DataTable";
+import CalculatedFieldEdit from "./CalculatedFieldEdit";
 import XlsxParseWorker from "@/xlsx-worker/index.js";
 import XlsxTableParseWorker from "@/xlsx-table-worker/index.js";
-import alasql from "alasql";
+// import alasql from "alasql";
 import { date, format } from "quasar";
 const { capitalize } = format;
 
 export default {
   components: {
     DataTable,
+    CalculatedFieldEdit,
   },
   data() {
     return {
       aggOptions: ["sum", "count", "avg", "max", "min"],
-      chartType: { name: "line", icon: "fas fa-chart-line", isCartesian: false },
+      chartType: { name: "line", icon: "fas fa-chart-line", isCartesian: true },
       chartTypeOptions: [
-        { name: "Line", type: "line", icon: "fas fa-chart-line", isCartesian: false },
-        { name: "Area", type: "area", icon: "fas fa-chart-area", isCartesian: false },
-        { name: "Bar", type: "bar", icon: "fas fa-chart-bar", isCartesian: false },
-        { name: "Horizontal Bar", type: "bar", icon: "fas fa-chart-bar", isCartesian: false },
-        { name: "Pie", type: "pie", icon: "fas fa-chart-pie", isCartesian: true },
-        { name: "Donut", type: "donut", icon: "fas fa-chart-pie", isCartesian: true },
-        { name: "PolarArea", type: "polarArea", icon: "fas fa-chart-pie", isCartesian: true },
-        { name: "Radar", type: "radar", icon: "fas fa-chart-pie", isCartesian: true },
-        { name: "Scatter", type: "scatter", icon: "fas fa-chart-pie", isCartesian: false },
+        { name: "Line", type: "line", icon: "fas fa-chart-line", isCartesian: true },
+        { name: "Area", type: "area", icon: "fas fa-chart-area", isCartesian: true },
+        { name: "Bar", type: "bar", icon: "fas fa-chart-bar", isCartesian: true },
+        { name: "Horizontal Bar", type: "bar", icon: "fas fa-chart-bar", isCartesian: true },
+        { name: "Pie", type: "pie", icon: "fas fa-chart-pie", isCartesian: false },
+        { name: "Donut", type: "donut", icon: "fas fa-chart-pie", isCartesian: false },
+        { name: "PolarArea", type: "polarArea", icon: "fas fa-chart-pie", isCartesian: false },
+        { name: "Radar", type: "radar", icon: "fas fa-chart-pie", isCartesian: false },
+        { name: "Scatter", type: "scatter", icon: "fas fa-chart-pie", isCartesian: true },
       ],
       baseColorPalette: ["#008FFB", "#00E396", "#FEB019", "#FF4560", "#775DD0"],
       columnHeaders: [],
@@ -279,6 +290,7 @@ export default {
       selectedDataSeries: [],
       selectedFilterSeries: [],
       selectedSortSeries: [],
+      showCalculatedField: false,
       showTable: false,
       tableData: [],
       selectedXaxisDimension: {},
@@ -288,7 +300,7 @@ export default {
     capitalize,
     getDistinctValues(columnName) {
       const query = `SELECT DISTINCT ${columnName} FROM ?`;
-      const result = alasql(query, [this.flatFileData]);
+      const result = this.$sql(query, [this.flatFileData]);
       return result.map((itm) => Object.values(itm)[0]).sort();
     },
     queryData(reprocess, inputArray, xProp, yProps, sortProps, filterProps) {
@@ -366,7 +378,8 @@ export default {
       if (this.latestQuery !== query || reprocess) {
         console.log("Query executed");
         this.latestQuery = query;
-        let qResults = alasql(query, [inputArray]);
+        let qResults = this.$sql(query, [inputArray]);
+
         return this.groupSumBy(qResults, xProp, yProps);
       } else {
         this.latestQuery = query;
@@ -470,19 +483,16 @@ export default {
           this.selectedSortSeries,
           this.selectedFilterSeries
         );
-
+        console.log(queryResults);
         if (queryResults) {
           if (!this.chartType.isCartesian) {
-            this.graphData = Object.values(queryResults[0]);
+            console.log("Inside pie graph statement");
             this.graphOptions = {
               labels: Object.keys(queryResults[0]),
             };
+            this.graphData = Object.values(queryResults[0]);
           } else {
-            this.graphData = queryResults.map((itm, idx) => ({
-              data: Object.values(itm),
-              name: this.selectedDataSeries[idx].Label ?? this.selectedDataSeries[idx].Name,
-            }));
-
+            console.log("Inside line graph statement");
             this.graphOptions = {
               chart: {
                 id: "vuebi-chart",
@@ -528,6 +538,11 @@ export default {
               },
               colors: this.baseColorPalette,
             };
+
+            this.graphData = queryResults.map((itm, idx) => ({
+              data: Object.values(itm),
+              name: this.selectedDataSeries[idx].Label ?? this.selectedDataSeries[idx].Name,
+            }));
           }
         }
 
@@ -586,7 +601,6 @@ export default {
 
     XlsxTableParseWorker.worker.onmessage = (event) => {
       if (event.data) {
-        console.log(event.data);
         this.tableData = event.data;
       }
     };
