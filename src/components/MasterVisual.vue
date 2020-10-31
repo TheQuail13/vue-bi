@@ -2,7 +2,7 @@
   <q-page padding class="main-page">
     <div class="row justify-center">
       <div class="col-2">
-        <q-btn color="green" icon="add" label="Add Calculated Field" class="full-width" />
+        <q-btn color="green" label="Add Calculated Field" class="full-width" />
         <q-list>
           <q-item-label header><strong>Dimensions</strong></q-item-label>
           <q-virtual-scroll style="height: 40vh;" :items="colDimensions">
@@ -39,7 +39,9 @@
       <div class="col-10">
         <div class="row">
           <div class="col-8 q-px-lg">
-            <drop class="drop q-mr-md" @drop="handleXDrop">{{ xAxis.Name ? xAxis.Name : "X-Axis" }}</drop>
+            <drop class="drop q-mr-md" @drop="handleXDrop">{{
+              selectedXaxisDimension.Name ? selectedXaxisDimension.Name : "X-Axis"
+            }}</drop>
             <drop class="drop q-mr-md" @drop="handleYDrop">Series</drop>
             <drop class="drop q-mr-md" @drop="handleSortDrop">Sort By</drop>
             <drop class="drop" @drop="handleFilterDrop">Filter</drop>
@@ -47,10 +49,10 @@
               <div class="col q-mr-md">
                 <div class="text-center"><strong>Series</strong></div>
                 <q-list bordered separator class="q-mt-md">
-                  <q-item v-for="(itm, idx) in droppedArray" :key="idx" style="cursor: pointer;">
+                  <q-item v-for="(itm, idx) in selectedDataSeries" :key="idx" style="cursor: pointer;">
                     <q-item-section>{{ itm.Name }}</q-item-section>
                     <q-item-section side>
-                      <q-icon name="close" @click="removeFromArray('droppedArray', idx)" />
+                      <q-icon name="close" @click="removeFromArray('selectedDataSeries', idx)" />
                     </q-item-section>
                     <q-popup-edit v-model="itm.IsEditing" @before-hide="computeGraphData(true)">
                       <q-select
@@ -60,7 +62,15 @@
                         label="Select an aggregation type"
                       />
                       <q-input label="Label" v-model="itm.Label" outlined class="q-my-xs" />
-                      <q-input label="Color" outlined class="q-my-xs" />
+                      <q-input label="Color" v-model="itm.Color" outlined class="q-my-xs">
+                        <template v-slot:append>
+                          <q-icon name="colorize" class="cursor-pointer">
+                            <q-popup-proxy transition-show="scale" transition-hide="scale">
+                              <q-color v-model="itm.Color" no-header no-footer />
+                            </q-popup-proxy>
+                          </q-icon>
+                        </template>
+                      </q-input>
                     </q-popup-edit>
                   </q-item>
                 </q-list>
@@ -68,7 +78,7 @@
               <div class="col q-mr-md">
                 <div class="text-center"><strong>Sorting</strong></div>
                 <q-list bordered separator class="q-mt-md">
-                  <q-item v-for="(itm, idx) in droppedSortArray" :key="idx" style="cursor: pointer;">
+                  <q-item v-for="(itm, idx) in selectedSortSeries" :key="idx" style="cursor: pointer;">
                     <q-item-section>{{ itm.Name }}</q-item-section>
                     <q-popup-edit v-model="itm.IsEditing" @before-hide="computeGraphData(true)">
                       <q-select
@@ -87,7 +97,7 @@
                       />
                     </q-popup-edit>
                     <q-item-section side>
-                      <q-icon name="close" @click="removeFromArray('droppedSortArray', idx)" />
+                      <q-icon name="close" @click="removeFromArray('selectedSortSeries', idx)" />
                     </q-item-section>
                   </q-item>
                 </q-list>
@@ -95,7 +105,7 @@
               <div class="col">
                 <div class="text-center"><strong>Filters</strong></div>
                 <q-list bordered separator class="q-mt-md">
-                  <q-item v-for="(itm, idx) in droppedFilterArray" :key="idx" style="cursor: pointer;">
+                  <q-item v-for="(itm, idx) in selectedFilterSeries" :key="idx" style="cursor: pointer;">
                     <q-item-section>{{ itm.Name }}</q-item-section>
                     <q-popup-edit v-model="itm.IsEditing" @before-hide="computeGraphData(true)">
                       <q-select
@@ -121,7 +131,7 @@
                       />
                     </q-popup-edit>
                     <q-item-section side>
-                      <q-icon name="close" @click="removeFromArray('droppedFilterArray', idx)" />
+                      <q-icon name="close" @click="removeFromArray('selectedFilterSeries', idx)" />
                     </q-item-section>
                   </q-item>
                 </q-list>
@@ -225,9 +235,6 @@ export default {
         { name: "scatter", icon: "fas fa-chart-pie", isSpecial: false },
       ],
       columnHeaders: [],
-      droppedArray: [],
-      droppedSortArray: [],
-      droppedFilterArray: [],
       files: [],
       filterOperators: [""],
       flatFileData: [],
@@ -259,9 +266,12 @@ export default {
       },
       isLoading: false,
       latestQuery: "",
+      selectedDataSeries: [],
+      selectedFilterSeries: [],
+      selectedSortSeries: [],
       showTable: false,
       tableData: [],
-      xAxis: {},
+      selectedXaxisDimension: {},
     };
   },
   methods: {
@@ -399,6 +409,7 @@ export default {
         return {
           Name: typeof headers[rIdx] === "undefined" ? `Column${rIdx}` : headers[rIdx],
           Label: null,
+          Color: null,
           DataType: type,
           Sort: {
             Direction: "asc",
@@ -426,37 +437,37 @@ export default {
       }
     },
     handleXDrop(data) {
-      this.xAxis = data.item;
+      this.selectedXaxisDimension = data.item;
       this.computeGraphData();
     },
     handleYDrop(data) {
-      if (!this.droppedArray.includes(data.item)) {
-        this.droppedArray.push(data.item);
+      if (!this.selectedDataSeries.includes(data.item)) {
+        this.selectedDataSeries.push(data.item);
         this.computeGraphData();
       }
     },
     handleSortDrop(data) {
-      if (!this.droppedSortArray.includes(data.item)) {
-        this.droppedSortArray.push(data.item);
+      if (!this.selectedSortSeries.includes(data.item)) {
+        this.selectedSortSeries.push(data.item);
         this.computeGraphData();
       }
     },
     handleFilterDrop(data) {
-      if (!this.droppedFilterArray.includes(data.item)) {
-        this.droppedFilterArray.push(data.item);
+      if (!this.selectedFilterSeries.includes(data.item)) {
+        this.selectedFilterSeries.push(data.item);
       }
     },
     computeGraphData(reprocess) {
-      if (this.xAxis.Name && this.droppedArray.length > 0) {
+      if (this.selectedXaxisDimension.Name && this.selectedDataSeries.length > 0) {
         this.isLoading = true;
 
         let queryResults = this.queryData(
           reprocess,
           this.flatFileData,
-          this.xAxis,
-          this.droppedArray,
-          this.droppedSortArray,
-          this.droppedFilterArray
+          this.selectedXaxisDimension,
+          this.selectedDataSeries,
+          this.selectedSortSeries,
+          this.selectedFilterSeries
         );
 
         if (queryResults) {
@@ -465,7 +476,7 @@ export default {
           } else {
             this.graphData = queryResults.map((itm, idx) => ({
               data: Object.values(itm),
-              name: this.droppedArray[idx].Label ?? this.droppedArray[idx].Name,
+              name: this.selectedDataSeries[idx].Label ?? this.selectedDataSeries[idx].Name,
             }));
           }
 
@@ -525,7 +536,7 @@ export default {
     },
     setChartType() {
       if (this.chartType.isSpecial) {
-        this.droppedArray.length = 1;
+        this.selectedDataSeries.length = 1;
       }
       this.computeGraphData(true);
     },
@@ -540,9 +551,8 @@ export default {
       return dataType === "number" ? ["=", ">", "<", ">=", "<="] : ["=", "like", "in"];
     },
     parseDataForTable() {
-      if (this.tableData.length > 0) {
-        this.showTable = true;
-      } else {
+      this.showTable = true;
+      if (this.tableData.length === 0) {
         XlsxTableParseWorker.send(this.files[0]);
       }
     },
@@ -578,7 +588,6 @@ export default {
       if (event.data) {
         console.log(event.data);
         this.tableData = event.data;
-        this.showTable = true;
       }
     };
   },

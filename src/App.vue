@@ -6,7 +6,7 @@
         <q-toolbar-title>
           VueBI
         </q-toolbar-title>
-        <div>v{{ $q.version }}</div>
+        <div>v 0.0.1</div>
       </q-toolbar>
     </q-header>
 
