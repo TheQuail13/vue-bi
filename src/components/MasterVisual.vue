@@ -197,7 +197,7 @@
     </div>
 
     <q-page-sticky position="bottom-right" :offset="[25, 25]">
-      <q-btn fab icon="airplay" color="info" @click="forceRender" />
+      <q-btn fab icon="airplay" color="info" @click="parseDataForTable" />
     </q-page-sticky>
 
     <q-dialog v-model="showTable" full-width>
@@ -229,17 +229,17 @@ export default {
   data() {
     return {
       aggOptions: ["sum", "count", "avg", "max", "min"],
-      chartType: { name: "line", icon: "fas fa-chart-line", isSpecial: false },
+      chartType: { name: "line", icon: "fas fa-chart-line", isCartesian: false },
       chartTypeOptions: [
-        { name: "Line", type: "line", icon: "fas fa-chart-line", isSpecial: false },
-        { name: "Area", type: "area", icon: "fas fa-chart-area", isSpecial: false },
-        { name: "Bar", type: "bar", icon: "fas fa-chart-bar", isSpecial: false },
-        { name: "Horizontal Bar", type: "bar", icon: "fas fa-chart-bar", isSpecial: false },
-        { name: "Pie", type: "pie", icon: "fas fa-chart-pie", isSpecial: true },
-        { name: "Donut", type: "donut", icon: "fas fa-chart-pie", isSpecial: true },
-        { name: "PolarArea", type: "polarArea", icon: "fas fa-chart-pie", isSpecial: true },
-        { name: "Radar", type: "radar", icon: "fas fa-chart-pie", isSpecial: true },
-        { name: "Scatter", type: "scatter", icon: "fas fa-chart-pie", isSpecial: false },
+        { name: "Line", type: "line", icon: "fas fa-chart-line", isCartesian: false },
+        { name: "Area", type: "area", icon: "fas fa-chart-area", isCartesian: false },
+        { name: "Bar", type: "bar", icon: "fas fa-chart-bar", isCartesian: false },
+        { name: "Horizontal Bar", type: "bar", icon: "fas fa-chart-bar", isCartesian: false },
+        { name: "Pie", type: "pie", icon: "fas fa-chart-pie", isCartesian: true },
+        { name: "Donut", type: "donut", icon: "fas fa-chart-pie", isCartesian: true },
+        { name: "PolarArea", type: "polarArea", icon: "fas fa-chart-pie", isCartesian: true },
+        { name: "Radar", type: "radar", icon: "fas fa-chart-pie", isCartesian: true },
+        { name: "Scatter", type: "scatter", icon: "fas fa-chart-pie", isCartesian: false },
       ],
       baseColorPalette: ["#008FFB", "#00E396", "#FEB019", "#FF4560", "#775DD0"],
       columnHeaders: [],
@@ -286,9 +286,6 @@ export default {
   },
   methods: {
     capitalize,
-    forceRender() {
-      this.$apexcharts.exec("vuebi-chart", "render", null);
-    },
     getDistinctValues(columnName) {
       const query = `SELECT DISTINCT ${columnName} FROM ?`;
       const result = alasql(query, [this.flatFileData]);
@@ -475,20 +472,17 @@ export default {
         );
 
         if (queryResults) {
-          if (this.chartType.isSpecial) {
+          if (!this.chartType.isCartesian) {
             this.graphData = Object.values(queryResults[0]);
+            this.graphOptions = {
+              labels: Object.keys(queryResults[0]),
+            };
           } else {
             this.graphData = queryResults.map((itm, idx) => ({
               data: Object.values(itm),
               name: this.selectedDataSeries[idx].Label ?? this.selectedDataSeries[idx].Name,
             }));
-          }
 
-          if (this.chartType.isSpecial) {
-            this.graphOptions = {
-              labels: Object.keys(queryResults[0]),
-            };
-          } else {
             this.graphOptions = {
               chart: {
                 id: "vuebi-chart",
@@ -541,7 +535,7 @@ export default {
       }
     },
     setChartType() {
-      if (this.chartType.isSpecial) {
+      if (!this.chartType.isCartesian) {
         this.selectedDataSeries.length = 1;
       }
       this.computeGraphData(true);
