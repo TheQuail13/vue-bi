@@ -2,6 +2,7 @@
   <q-page padding class="main-page">
     <div class="row justify-center">
       <div class="col-2">
+        <q-btn color="green" icon="add" label="Add Calculated Field" class="full-width" />
         <q-list>
           <q-item-label header><strong>Dimensions</strong></q-item-label>
           <q-virtual-scroll style="height: 40vh;" :items="colDimensions">
@@ -166,9 +167,6 @@
           </div>
         </div>
         <div class="row justify-center">
-          <!-- <div class="col q-px-lg">
-        <q-table title="Raw Data Preview" :data="tableData" :pagination="tablePagination" />
-      </div> -->
           <div class="col q-px-lg">
             <apexchart
               height="750"
@@ -182,6 +180,18 @@
       </div>
     </div>
 
+    <q-page-sticky position="bottom-right" :offset="[25, 25]">
+      <q-btn fab icon="airplay" color="info" @click="parseDataForTable" />
+    </q-page-sticky>
+
+    <q-dialog v-model="showTable" full-width>
+      <q-card>
+        <q-card-section>
+          <data-table :table-data="tableData" />
+        </q-card-section>
+      </q-card>
+    </q-dialog>
+
     <q-inner-loading :showing="isLoading">
       <q-spinner-grid size="125px" color="primary" />
     </q-inner-loading>
@@ -189,12 +199,17 @@
 </template>
 
 <script>
-import ParseWorker from "@/xlsx-worker/index.js";
+import DataTable from "./DataTable";
+import XlsxParseWorker from "@/xlsx-worker/index.js";
+import XlsxTableParseWorker from "@/xlsx-table-worker/index.js";
 import alasql from "alasql";
 import { date, format } from "quasar";
 const { capitalize } = format;
 
 export default {
+  components: {
+    DataTable,
+  },
   data() {
     return {
       aggOptions: ["sum", "count", "avg", "max", "min"],
@@ -244,9 +259,7 @@ export default {
       },
       isLoading: false,
       latestQuery: "",
-      tablePagination: {
-        rowsPerPage: 10,
-      },
+      showTable: false,
       tableData: [],
       xAxis: {},
     };
@@ -359,7 +372,7 @@ export default {
     },
     parseFile() {
       this.isLoading = true;
-      ParseWorker.send(this.files[0]);
+      XlsxParseWorker.send(this.files[0]);
     },
     processFileResults(headers, typeCheckData) {
       let tArr = [];
@@ -526,6 +539,13 @@ export default {
     getFilterTypes(dataType) {
       return dataType === "number" ? ["=", ">", "<", ">=", "<="] : ["=", "like", "in"];
     },
+    parseDataForTable() {
+      if (this.tableData.length > 0) {
+        this.showTable = true;
+      } else {
+        XlsxTableParseWorker.send(this.files[0]);
+      }
+    },
   },
   computed: {
     colDimensions() {
@@ -546,11 +566,19 @@ export default {
     },
   },
   mounted() {
-    ParseWorker.worker.onmessage = (event) => {
+    XlsxParseWorker.worker.onmessage = (event) => {
       if (event.data.fileData) {
         this.processFileResults(event.data.headers, event.data.typeCheckData);
         this.flatFileData = Object.freeze(event.data.fileData);
         this.isLoading = false;
+      }
+    };
+
+    XlsxTableParseWorker.worker.onmessage = (event) => {
+      if (event.data) {
+        console.log(event.data);
+        this.tableData = event.data;
+        this.showTable = true;
       }
     };
   },
