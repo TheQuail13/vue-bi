@@ -1,18 +1,26 @@
 <template>
   <q-card style="max-width: 75vw !important;">
     <q-card-section class="row items-center q-pb-none">
-      <div class="text-h6">Calculated Field</div>
+      <div class="text-h6">Add a Calculated Field</div>
       <q-space />
       <q-btn icon="close" flat round dense v-close-popup />
     </q-card-section>
 
-    <q-card-section class="q-py-none">
+    <q-card-section>
+      <div>
+        <q-input v-model="func.name" label="Name" />
+      </div>
+    </q-card-section>
+
+    <q-card-section v-if="!isError === false" class="q-py-none">
       <q-chip round icon="done" color="green" text-color="white" label="Function Valid" />
     </q-card-section>
 
     <q-card-section class="q-pt-sm">
       <div>
-        <q-input v-model="functionDefinition" outlined type="textarea" />
+        <drop @drop="handleColumnDrop">
+          <q-input ref="funcInputForm" v-model="func.definition" outlined type="textarea" />
+        </drop>
       </div>
 
       <div class="row">
@@ -54,7 +62,10 @@ export default {
   },
   data() {
     return {
-      functionDefinition: "",
+      func: {
+        name: "",
+        definition: "",
+      },
       isError: null,
     };
   },
@@ -69,8 +80,14 @@ export default {
           return "fas fa-font";
       }
     },
+    getFunctionCursorPosition() {
+      const input = this.$refs.funcInputForm.$refs.input;
+      if (input) {
+        return input.selectionStart;
+      }
+    },
     validateFunction() {
-      const query = `SELECT ${this.functionDefinition} FROM ?`;
+      const query = `SELECT ${this.func.definition} FROM ?`;
       try {
         this.$sql(query, [this.flatFileData.slice(0, 25)]);
         // console.log("results: ", results);
@@ -79,6 +96,14 @@ export default {
         // console.log("err: ", err);
         this.isError = true;
       }
+    },
+    handleColumnDrop(data) {
+      console.log(data.item);
+      const cursorPos = this.getFunctionCursorPosition();
+      this.func.definition =
+        this.func.definition.substring(0, cursorPos) +
+        `[${data.item.Name}]` +
+        this.func.definition.substring(cursorPos + 1, this.func.definition.length);
     },
   },
 };
