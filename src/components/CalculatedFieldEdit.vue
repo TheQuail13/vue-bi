@@ -69,9 +69,6 @@ export default {
           return "fas fa-font";
       }
     },
-    // validateFunction() {
-    //   this.$emit("validate", this.functionDefinition);
-    // },
     validateFunction() {
       const query = `SELECT ${this.functionDefinition} FROM ?`;
       try {

@@ -228,7 +228,6 @@ import DataTable from "./DataTable";
 import CalculatedFieldEdit from "./CalculatedFieldEdit";
 import XlsxParseWorker from "@/xlsx-worker/index.js";
 import XlsxTableParseWorker from "@/xlsx-table-worker/index.js";
-// import alasql from "alasql";
 import { date, format } from "quasar";
 const { capitalize } = format;
 
@@ -303,20 +302,21 @@ export default {
       const result = this.$sql(query, [this.flatFileData]);
       return result.map((itm) => Object.values(itm)[0]).sort();
     },
-    queryData(reprocess, inputArray, xProp, yProps, sortProps, filterProps) {
+    queryData(reprocess) {
       let filterClause;
 
       // Generate the columns to aggregate in the select clause
-      let aggClause = yProps
+      let aggClause = this.selectedDataSeries
         .map((itm) => `${itm.AggType}([${itm.Name}]) AS [${itm.Name}]`)
         .reduce((acc, obj) => `${acc}, ${obj}`);
 
       // If any filters, generate the where clause
       if (
-        filterProps.length > 0 &&
-        (filterProps[0].Filter.Value || filterProps[0].Filter.SelectedValues.length > 0)
+        this.selectedFilterSeries.length > 0 &&
+        (this.selectedFilterSeries[0].Filter.Value ||
+          this.selectedFilterSeries[0].Filter.SelectedValues.length > 0)
       ) {
-        filterClause = filterProps
+        filterClause = this.selectedFilterSeries
           .map((itm) => {
             const colName = `${itm.DataType === "number" ? `[${itm.Name}]` : `LOWER([${itm.Name}])`}`;
             let colValue;
@@ -354,8 +354,8 @@ export default {
 
       // Generate the order by clause
       const sortClause =
-        sortProps.length > 0
-          ? sortProps
+        this.selectedSortSeries.length > 0
+          ? this.selectedSortSeries
               .map((itm) => {
                 const sortCol =
                   itm.Sort.Aggregation === "none"
@@ -368,9 +368,9 @@ export default {
           : 1;
 
       // Compile executed query
-      const query = `SELECT [${xProp.Name}], ${aggClause} FROM ? ${
-        filterProps.length > 0 ? filterClause : ""
-      } GROUP BY [${xProp.Name}] ORDER BY ${sortClause}`;
+      const query = `SELECT [${this.selectedXaxisDimension.Name}], ${aggClause} FROM ? ${
+        this.selectedFilterSeries.length > 0 ? filterClause : ""
+      } GROUP BY [${this.selectedXaxisDimension.Name}] ORDER BY ${sortClause}`;
 
       console.log(query);
 
@@ -378,9 +378,9 @@ export default {
       if (this.latestQuery !== query || reprocess) {
         console.log("Query executed");
         this.latestQuery = query;
-        let qResults = this.$sql(query, [inputArray]);
+        let qResults = this.$sql(query, [this.flatFileData]);
 
-        return this.groupSumBy(qResults, xProp, yProps);
+        return this.groupSumBy(qResults, this.selectedXaxisDimension, this.selectedDataSeries);
       } else {
         this.latestQuery = query;
         return false;
@@ -475,24 +475,15 @@ export default {
       if (this.selectedXaxisDimension.Name && this.selectedDataSeries.length > 0) {
         this.isLoading = true;
 
-        let queryResults = this.queryData(
-          reprocess,
-          this.flatFileData,
-          this.selectedXaxisDimension,
-          this.selectedDataSeries,
-          this.selectedSortSeries,
-          this.selectedFilterSeries
-        );
-        console.log(queryResults);
+        let queryResults = this.queryData(reprocess);
+
         if (queryResults) {
           if (!this.chartType.isCartesian) {
-            console.log("Inside pie graph statement");
             this.graphOptions = {
               labels: Object.keys(queryResults[0]),
             };
             this.graphData = Object.values(queryResults[0]);
           } else {
-            console.log("Inside line graph statement");
             this.graphOptions = {
               chart: {
                 id: "vuebi-chart",
