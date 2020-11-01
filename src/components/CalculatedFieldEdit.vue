@@ -42,6 +42,13 @@
             </q-virtual-scroll>
           </q-list>
         </div>
+        <div class="col-8">
+          <q-item-label class="q-mt-xl q-pl-xl">
+            Click
+            <a href="https://github.com/agershun/alasql/wiki/SQL%20keywords" target="_blank">here</a> for a
+            list of supported functions.
+          </q-item-label>
+        </div>
       </div>
     </q-card-section>
     <q-card-actions align="right">
@@ -85,6 +92,8 @@ export default {
       if (input) {
         return input.selectionStart;
       }
+
+      return 0;
     },
     validateFunction() {
       const query = `SELECT ${this.func.definition} FROM ?`;
@@ -98,7 +107,6 @@ export default {
       }
     },
     handleColumnDrop(data) {
-      console.log(data.item);
       const cursorPos = this.getFunctionCursorPosition();
       this.func.definition =
         this.func.definition.substring(0, cursorPos) +
@@ -108,5 +116,3 @@ export default {
   },
 };
 </script>
-
-<style lang="scss" scoped></style>
