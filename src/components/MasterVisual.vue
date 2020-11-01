@@ -286,8 +286,14 @@ export default {
       let filterClause;
 
       // Generate the columns to aggregate in the select clause
-      let aggClause = this.selectedDataSeries
-        .map((itm) => `${itm.AggType}([${itm.Name}]) AS [${itm.Name}]`)
+      let selectClause = this.selectedDataSeries
+        .map((itm) => {
+          if (!itm.Calculation.IsCalculated) {
+            return `${itm.AggType}([${itm.Name}]) AS [${itm.Name}]`;
+          } else {
+            return `${itm.AggType}(${itm.Calculation.Definition}) AS [${itm.Name}]`;
+          }
+        })
         .reduce((acc, obj) => `${acc}, ${obj}`);
 
       // If any filters, generate the where clause
@@ -348,7 +354,7 @@ export default {
           : 1;
 
       // Compile executed query
-      const query = `SELECT [${this.selectedXaxisDimension.Name}], ${aggClause} FROM ? ${
+      const query = `SELECT [${this.selectedXaxisDimension.Name}], ${selectClause} FROM ? ${
         this.selectedFilterSeries.length > 0 ? filterClause : ""
       } GROUP BY [${this.selectedXaxisDimension.Name}] ORDER BY ${sortClause}`;
 
@@ -359,7 +365,7 @@ export default {
         console.log("Query executed");
         this.latestQuery = query;
         let qResults = this.$sql(query, [this.flatFileData]);
-
+        console.log(qResults);
         return this.groupSumBy(qResults, this.selectedXaxisDimension, this.selectedDataSeries);
       } else {
         this.latestQuery = query;
