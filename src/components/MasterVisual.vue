@@ -8,56 +8,18 @@
           class="full-width"
           @click="showCalculatedField = true"
         />
-        <q-list>
-          <q-item-label header><strong>Dimensions</strong></q-item-label>
-          <q-virtual-scroll style="height: 40vh;" :items="colDimensions">
-            <template v-slot="{ item, index }">
-              <drag style="cursor: move;" :transfer-data="{ item }">
-                <q-item :key="index" class="bg-primary text-white q-my-xs rounded-borders">
-                  <q-item-section>
-                    <q-item-label>
-                      <q-icon :name="getIcon(item.DataType)" class="q-mr-sm" />{{ item.Name }}
-                    </q-item-label>
-                  </q-item-section>
-                  <q-item-section v-if="item.Calculation.IsCalculated" side>
-                    <q-icon
-                      name="edit"
-                      color="white"
-                      class="q-mr-sm"
-                      style="cursor: pointer;"
-                      @click="editCalculatedField"
-                    />
-                  </q-item-section>
-                </q-item>
-              </drag>
-            </template>
-          </q-virtual-scroll>
-        </q-list>
-        <q-list>
-          <q-item-label header><strong>Values</strong></q-item-label>
-          <q-virtual-scroll style="height: 40vh;" :items="colValues">
-            <template v-slot="{ item, index }">
-              <drag style="cursor: move;" :transfer-data="{ item }">
-                <q-item :key="index" class="bg-green text-white q-my-xs rounded-borders">
-                  <q-item-section>
-                    <q-item-label>
-                      <q-icon :name="getIcon(item.DataType)" class="q-mr-sm" />{{ item.Name }}
-                    </q-item-label>
-                  </q-item-section>
-                  <q-item-section v-if="item.Calculation.IsCalculated" side>
-                    <q-icon
-                      name="edit"
-                      color="white"
-                      class="q-mr-sm"
-                      style="cursor: pointer;"
-                      @click="editCalculatedField"
-                    />
-                  </q-item-section>
-                </q-item>
-              </drag>
-            </template>
-          </q-virtual-scroll>
-        </q-list>
+        <column-list
+          header="Dimensions"
+          :columns="colDimensions"
+          color="primary"
+          @editcalculatedfield="editCalculatedField"
+        />
+        <column-list
+          header="Values"
+          :columns="colValues"
+          color="green"
+          @editcalculatedfield="editCalculatedField"
+        />
       </div>
       <div class="col-10">
         <div class="row">
@@ -242,6 +204,7 @@
 <script>
 import DataTable from "./DataTable";
 import CalculatedFieldEdit from "./CalculatedFieldEdit";
+import ColumnList from "./ColumnList";
 import XlsxParseWorker from "@/xlsx-worker/index.js";
 import XlsxTableParseWorker from "@/xlsx-table-worker/index.js";
 import { date, format } from "quasar";
@@ -251,6 +214,7 @@ export default {
   components: {
     DataTable,
     CalculatedFieldEdit,
+    ColumnList,
   },
   data() {
     return {
@@ -471,16 +435,7 @@ export default {
       this.columns = dataTypeArrCheck;
     },
     editCalculatedField() {},
-    getIcon(type) {
-      switch (type) {
-        case "date":
-          return "fas fa-calendar-alt";
-        case "number":
-          return "fas fa-superscript";
-        default:
-          return "fas fa-font";
-      }
-    },
+
     handleXDrop(data) {
       this.selectedXaxisDimension = data.item;
       this.computeGraphData();

@@ -164,7 +164,7 @@ export default {
         }
       });
 
-      // find the distinct datatype values in each column and determine a final column datatype
+      // find the distinct datatype values in each column and determine a final column datatype if more than one detected
       let dataTypeConsolidation = dataTypeArr.map((row) => row.filter((v, i, a) => a.indexOf(v) === i)[0]);
       let finalTypes = [...new Set(dataTypeConsolidation)];
 
