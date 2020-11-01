@@ -563,7 +563,7 @@ export default {
       }
     },
     saveCalculatedField(field) {
-      console.log(field);
+      console.log(field.name);
     },
   },
   computed: {

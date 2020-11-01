@@ -2,6 +2,11 @@
   <q-card style="max-width: 75vw !important;">
     <q-card-section class="row items-center q-pb-none">
       <div class="text-h6">Add a Calculated Field</div>
+      <div v-if="hasRunValidation">
+        <q-chip v-if="func.isValid" icon="verified" color="green" text-color="white" label="Function Valid" />
+        <q-chip v-else icon="clear" color="red" text-color="white" label="Error detected" />
+      </div>
+
       <q-space />
       <q-btn icon="close" flat round dense v-close-popup />
     </q-card-section>
@@ -17,11 +22,6 @@
       </div>
     </q-card-section>
 
-    <q-card-section v-if="hasRunValidation" class="q-py-none">
-      <q-chip v-if="func.isValid" icon="verified" color="green" text-color="white" label="Function Valid" />
-      <q-chip v-else icon="clear" color="red" text-color="white" label="Error detected" />
-    </q-card-section>
-
     <q-card-section class="q-pt-sm">
       <div>
         <drop @drop="handleColumnDrop">
@@ -30,6 +30,7 @@
             v-model="func.definition"
             outlined
             type="textarea"
+            label="Field Calculation"
             :rules="[(val) => !!val || 'Field function is required']"
           />
         </drop>
@@ -38,7 +39,7 @@
       <div class="row">
         <div class="col-4">
           <q-list>
-            <q-item-label header><strong>Columns</strong></q-item-label>
+            <h6 class="q-ma-xs text-center"><strong>Columns</strong></h6>
             <q-virtual-scroll style="height: 25vh;" :items="columns">
               <template v-slot="{ item, index }">
                 <drag style="cursor: move;" :transfer-data="{ item }">
@@ -54,19 +55,24 @@
             </q-virtual-scroll>
           </q-list>
         </div>
-        <div class="col-8">
-          <q-item-label class="q-mt-xl q-pl-xl text-center">
-            <h5>
-              Click
-              <a href="https://github.com/agershun/alasql/wiki/SQL%20keywords" target="_blank">here</a> for a
-              list of supported SQL functions.
-            </h5>
-          </q-item-label>
+        <div class="col-8 ">
+          <h6 class="q-ma-xs text-center"><strong>Instructions</strong></h6>
+          <div class="q-pl-xl text-center">
+            <div v-for="entry in instructions" :key="entry.icon" class="q-mb-md">
+              <q-icon :name="entry.icon" size="sm" color="info" /> {{ entry.text }}
+            </div>
+            <div>
+              <strong>
+                Click
+                <a href="https://github.com/agershun/alasql/wiki/SQL%20keywords" target="_blank">here</a> for
+                a list of supported SQL functions.
+              </strong>
+            </div>
+          </div>
         </div>
       </div>
     </q-card-section>
     <q-card-actions align="right" class="q-pb-md q-pr-md">
-      <q-btn label="cancel" color="red" v-close-popup />
       <q-btn label="Validate" color="orange" @click="validateFunctionSyntax" />
       <q-btn label="Save" color="green" @click="save" />
     </q-card-actions>
@@ -94,8 +100,27 @@ export default {
         definition: "",
         isValid: null,
       },
-
       hasRunValidation: false,
+      instructions: [
+        {
+          icon: "looks_one",
+          text: "Use this window to create your own calculated field that will be added to the dataset.",
+        },
+        {
+          icon: "looks_two",
+          text:
+            "Once you create a calculated field, it acts just like any column, so it can power a visualization, or you can use it to sort and filter with.",
+        },
+        {
+          icon: "looks_3",
+          text:
+            "Nearly all accepted SQL functions are accepted, such as case statements, DateAdd(), Month(), Cast(), etc.",
+        },
+        {
+          icon: "looks_4",
+          text: `Examples: "DATEADD(year, 1, '2017/08/25')","MONTH([MyDateColumn])", "CASE WHEN [Price] > 1500 THEN 'True' ELSE 'False' END".`,
+        },
+      ],
     };
   },
   methods: {
@@ -122,13 +147,13 @@ export default {
       this.func.definition =
         this.func.definition.substring(0, cursorPos) +
         `[${data.item.Name}]` +
-        this.func.definition.substring(cursorPos + 1, this.func.definition.length);
+        this.func.definition.substring(cursorPos, this.func.definition.length);
     },
-    async validateFunction() {
+    validateFunction() {
       const query = `SELECT ${this.func.definition} FROM ?`;
       try {
-        this.$sql(query, [this.data.slice(0, 25)]);
-        // console.log("results: ", results);
+        const results = this.$sql(query, [this.data.slice(0, 25)]);
+        console.log("results: ", results);
         return true;
       } catch (err) {
         // console.log("err: ", err);
@@ -143,6 +168,17 @@ export default {
       this.$refs.funcName.validate();
       this.$refs.funcDef.validate();
 
+      // todo: add check for existing field name
+      let isNameUnique = this.doesColumnNameExist(this.func.name);
+
+      if (isNameUnique) {
+        this.$q.dialog({
+          title: "Error",
+          message: "That column name already exists.",
+        });
+        return;
+      }
+
       if (!this.$refs.funcName.hasError && !this.$refs.funcDef.hasError) {
         this.validateFunctionSyntax().then(() => {
           if (this.func.isValid) {
@@ -152,7 +188,9 @@ export default {
               .dialog({
                 title: "Confirm",
                 message: "Errors detected. Would you like to save anyway?",
-                cancel: true,
+                cancel: {
+                  label: "No",
+                },
                 persistent: true,
               })
               .onOk(() => {
@@ -161,6 +199,9 @@ export default {
           }
         });
       }
+    },
+    doesColumnNameExist(name) {
+      return this.columns.filter((x) => x.Name.toLowerCase() === name.toLowerCase()).length > 0;
     },
   },
 };
