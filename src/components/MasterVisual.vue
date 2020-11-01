@@ -202,7 +202,7 @@
     </div>
 
     <q-page-sticky position="bottom-right" :offset="[25, 25]">
-      <q-btn fab icon="airplay" color="info" @click="parseDataForTable" />
+      <q-btn fab icon="table_view" color="info" @click="parseDataForTable" />
     </q-page-sticky>
 
     <q-dialog v-model="showTable" full-width>
@@ -214,7 +214,7 @@
     </q-dialog>
 
     <q-dialog v-model="showCalculatedField" persistent full-width>
-      <calculated-field-edit :columns="columnHeaders" :data="flatFileData" @save="saveCalculatedField" />
+      <calculated-field-edit :columns="columns" :data="flatFileData" @save="saveCalculatedField" />
     </q-dialog>
 
     <q-inner-loading :showing="isLoading">
@@ -252,7 +252,7 @@ export default {
         { name: "Scatter", type: "scatter", icon: "fas fa-chart-pie", isCartesian: true },
       ],
       baseColorPalette: ["#008FFB", "#00E396", "#FEB019", "#FF4560", "#775DD0"],
-      columnHeaders: [],
+      columns: [],
       files: [],
       filterOperators: [""],
       flatFileData: [],
@@ -408,21 +408,23 @@ export default {
       XlsxParseWorker.send(this.files[0]);
     },
     processFileResults(headers, typeCheckData) {
+      // loop through each row of data to determine datatype
       let dataTypeArr = [];
       typeCheckData.map((oRow, oIdx) => {
         if (oIdx > 0) {
           oRow.map((iRow, iIdx) => {
-            let t = Object.prototype.toString.call(iRow) === "[object Date]";
-            let ft = t === true ? "date" : typeof iRow;
+            const dataType = Object.prototype.toString.call(iRow) === "[object Date]" ? "date" : typeof iRow;
 
             if (typeof dataTypeArr[iIdx] === "undefined") {
-              dataTypeArr[iIdx] = [ft];
+              dataTypeArr[iIdx] = [dataType];
             } else {
-              dataTypeArr[iIdx].push(ft);
+              dataTypeArr[iIdx].push(dataType);
             }
           });
         }
       });
+
+      // find the distinct datatype values in each column and determine a final column datatype
       let dataTypeArrCheck = dataTypeArr.map((row, rIdx) => {
         let type =
           row.filter((v, i, a) => a.indexOf(v) === i).length > 1
@@ -447,7 +449,7 @@ export default {
         };
       });
 
-      this.columnHeaders = Object.freeze(dataTypeArrCheck);
+      this.columns = Object.freeze(dataTypeArrCheck);
     },
     getIcon(type) {
       switch (type) {
@@ -563,21 +565,26 @@ export default {
       }
     },
     saveCalculatedField(field) {
-      console.log(field.name);
+      console.log(field);
+      // determine data type
+
+      // merge existing data with previously created column object structure
+
+      // add to column list
     },
   },
   computed: {
     colDimensions() {
-      if (this.columnHeaders.length > 0) {
-        return this.columnHeaders
+      if (this.columns.length > 0) {
+        return this.columns
           .filter((x) => x.DataType !== "number")
           .sort((a, b) => a.Name.localeCompare(b.Name));
       }
       return [];
     },
     colValues() {
-      if (this.columnHeaders.length > 0) {
-        return this.columnHeaders
+      if (this.columns.length > 0) {
+        return this.columns
           .filter((x) => x.DataType === "number")
           .sort((a, b) => a.Name.localeCompare(b.Name));
       }
