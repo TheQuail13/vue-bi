@@ -213,8 +213,8 @@
       </q-card>
     </q-dialog>
 
-    <q-dialog v-model="showCalculatedField" full-width>
-      <calculated-field-edit :columns="columnHeaders" />
+    <q-dialog v-model="showCalculatedField" persistent full-width>
+      <calculated-field-edit :columns="columnHeaders" :data="flatFileData" @save="saveCalculatedField" />
     </q-dialog>
 
     <q-inner-loading :showing="isLoading">
@@ -561,6 +561,9 @@ export default {
       if (this.tableData.length === 0) {
         XlsxTableParseWorker.send(this.files[0]);
       }
+    },
+    saveCalculatedField(field) {
+      console.log(field);
     },
   },
   computed: {
