@@ -19,6 +19,15 @@
                       <q-icon :name="getIcon(item.DataType)" class="q-mr-sm" />{{ item.Name }}
                     </q-item-label>
                   </q-item-section>
+                  <q-item-section v-if="item.Calculation.IsCalculated" side>
+                    <q-icon
+                      name="edit"
+                      color="white"
+                      class="q-mr-sm"
+                      style="cursor: pointer;"
+                      @click="editCalculatedField"
+                    />
+                  </q-item-section>
                 </q-item>
               </drag>
             </template>
@@ -34,6 +43,15 @@
                     <q-item-label>
                       <q-icon :name="getIcon(item.DataType)" class="q-mr-sm" />{{ item.Name }}
                     </q-item-label>
+                  </q-item-section>
+                  <q-item-section v-if="item.Calculation.IsCalculated" side>
+                    <q-icon
+                      name="edit"
+                      color="white"
+                      class="q-mr-sm"
+                      style="cursor: pointer;"
+                      @click="editCalculatedField"
+                    />
                   </q-item-section>
                 </q-item>
               </drag>
@@ -159,9 +177,6 @@
               clearable
               @input="parseFile"
             >
-              <!-- <template v-slot:after>
-            <q-btn round dense flat icon="send" @click.prevent="parseFile" />
-          </template> -->
             </q-file>
             <q-select
               outlined
@@ -213,7 +228,8 @@
       </q-card>
     </q-dialog>
 
-    <q-dialog v-model="showCalculatedField" persistent full-width>
+    <q-dialog ref="cfEditor" v-model="showCalculatedField" persistent full-width>
+      <template> </template>
       <calculated-field-edit :columns="columns" :data="flatFileData" @save="saveCalculatedField" />
     </q-dialog>
 
@@ -433,6 +449,9 @@ export default {
 
         return {
           Name: typeof headers[rIdx] === "undefined" ? `Column${rIdx}` : headers[rIdx],
+          Calculation: {
+            IsCalculated: false,
+          },
           Label: null,
           Color: null,
           DataType: type,
@@ -449,8 +468,9 @@ export default {
         };
       });
 
-      this.columns = Object.freeze(dataTypeArrCheck);
+      this.columns = dataTypeArrCheck;
     },
+    editCalculatedField() {},
     getIcon(type) {
       switch (type) {
         case "date":
@@ -565,12 +585,30 @@ export default {
       }
     },
     saveCalculatedField(field) {
-      console.log(field);
-      // determine data type
+      let columnToAdd = {
+        Name: field.Name,
+        Calculation: {
+          IsCalculated: true,
+          Definition: field.Definition,
+          IsValid: field.IsValid,
+        },
+        Label: null,
+        Color: null,
+        DataType: field.DataType,
+        Sort: {
+          Direction: "asc",
+          Aggregation: "none",
+        },
+        Filter: {
+          Operator: "=",
+          Value: "",
+          SelectedValues: [],
+        },
+        AggType: field.DataType === "string" || field.DataType === "date" ? "count" : "sum",
+      };
 
-      // merge existing data with previously created column object structure
-
-      // add to column list
+      this.columns.push(columnToAdd);
+      this.$refs.cfEditor.hide();
     },
   },
   computed: {
