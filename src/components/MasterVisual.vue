@@ -191,8 +191,13 @@
     </q-dialog>
 
     <q-dialog ref="cfEditor" v-model="showCalculatedField" persistent full-width>
-      <template> </template>
-      <calculated-field-edit :columns="columns" :data="flatFileData" @save="saveCalculatedField" />
+      <calculated-field-edit
+        :func="calculatedFieldToEdit"
+        :columns="columns"
+        :data="flatFileData"
+        @add="saveCalculatedField"
+        @update="updateCalculatedField"
+      />
     </q-dialog>
 
     <q-inner-loading :showing="isLoading">
@@ -219,6 +224,7 @@ export default {
   data() {
     return {
       aggOptions: ["sum", "count", "avg", "max", "min"],
+      calculatedFieldToEdit: {},
       chartType: { name: "line", icon: "fas fa-chart-line", isCartesian: true },
       chartTypeOptions: [
         { name: "Line", type: "line", icon: "fas fa-chart-line", isCartesian: true },
@@ -279,7 +285,7 @@ export default {
     capitalize,
     getDistinctValues(column) {
       const query = `SELECT DISTINCT ${
-        !column.Calculation.IsCalculated ? column.Name : column.Calculation.Definition
+        !column.IsCalculated ? column.Name : column.CalculationDefinition
       } FROM ?`;
       const result = this.$sql(query, [this.flatFileData]);
       return result.map((itm) => Object.values(itm)[0]).sort();
@@ -294,10 +300,10 @@ export default {
       // Generate the columns to aggregate in the select clause
       let selectClause = this.selectedDataSeries
         .map((itm) => {
-          if (!itm.Calculation.IsCalculated) {
+          if (!itm.IsCalculated) {
             return `${itm.AggType}([${itm.Name}]) AS [${itm.Name}]`;
           } else {
-            return `${itm.AggType}(${itm.Calculation.Definition}) AS [${itm.Name}]`;
+            return `${itm.AggType}(${itm.CalculationDefinition}) AS [${itm.Name}]`;
           }
         })
         .reduce((acc, obj) => `${acc}, ${obj}`);
@@ -309,10 +315,10 @@ export default {
             let colName;
             let colValue;
 
-            if (!itm.Calculation.IsCalculated) {
+            if (!itm.IsCalculated) {
               colName = `${itm.DataType === "number" ? `[${itm.Name}]` : `LOWER([${itm.Name}])`}`;
             } else {
-              colName = itm.Calculation.Definition;
+              colName = itm.CalculationDefinition;
             }
 
             if (itm.DataType === "number") {
@@ -334,7 +340,6 @@ export default {
                 colValue = `'${itm.Filter.Value.toLowerCase()}'`;
               }
             }
-            console.log(colName, colValue);
 
             return `${colName} ${itm.Filter.Operator} ${colValue}`;
           })
@@ -372,10 +377,10 @@ export default {
 
       // If current query matches previous one, don't re-process
       if (this.latestQuery !== query || reprocess) {
-        console.log("Query executed");
         this.latestQuery = query;
         let qResults = this.$sql(query, [this.flatFileData]);
-        console.log(qResults);
+        console.log("Query results: ", qResults);
+
         return this.groupSumBy(qResults, this.selectedXaxisDimension, this.selectedDataSeries);
       } else {
         this.latestQuery = query;
@@ -429,9 +434,7 @@ export default {
 
         return {
           Name: typeof headers[rIdx] === "undefined" ? `Column${rIdx}` : headers[rIdx],
-          Calculation: {
-            IsCalculated: false,
-          },
+          IsCalculated: false,
           Label: null,
           Color: null,
           DataType: type,
@@ -450,8 +453,10 @@ export default {
 
       this.columns = dataTypeArrCheck;
     },
-    editCalculatedField() {},
-
+    editCalculatedField(field) {
+      this.calculatedFieldToEdit = JSON.parse(JSON.stringify(field));
+      this.showCalculatedField = true;
+    },
     handleXDrop(data) {
       this.selectedXaxisDimension = data.item;
       this.computeGraphData();
@@ -558,11 +563,9 @@ export default {
     saveCalculatedField(field) {
       let columnToAdd = {
         Name: field.Name,
-        Calculation: {
-          IsCalculated: true,
-          Definition: field.Definition,
-          IsValid: field.IsValid,
-        },
+        IsCalculated: true,
+        CalculationDefinition: field.CalculationDefinition,
+        IsValid: field.IsValid,
         Label: null,
         Color: null,
         DataType: field.DataType,
@@ -579,6 +582,12 @@ export default {
       };
 
       this.columns.push(columnToAdd);
+      this.$refs.cfEditor.hide();
+    },
+    updateCalculatedField(field) {
+      const fieldIndex = this.columns.findIndex((x) => x.Name === field.Name);
+      this.$set(this.columns, fieldIndex, field);
+
       this.$refs.cfEditor.hide();
     },
   },

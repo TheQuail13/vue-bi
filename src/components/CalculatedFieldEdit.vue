@@ -27,7 +27,7 @@
         <drop @drop="handleColumnDrop">
           <q-input
             ref="funcDef"
-            v-model="func.Definition"
+            v-model="func.CalculationDefinition"
             outlined
             type="textarea"
             label="Field Calculation"
@@ -82,6 +82,18 @@
 <script>
 export default {
   props: {
+    func: {
+      type: Object,
+      required: false,
+      default: () => {
+        return {
+          Name: "",
+          CalculationDefinition: "",
+          IsValid: null,
+          DataType: "string",
+        };
+      },
+    },
     columns: {
       type: Array,
       required: true,
@@ -90,17 +102,11 @@ export default {
     data: {
       type: Array,
       required: true,
-      default: () => {},
+      default: () => [],
     },
   },
   data() {
     return {
-      func: {
-        Name: "",
-        Definition: "",
-        IsValid: null,
-        DataType: "string",
-      },
       hasRunValidation: false,
       instructions: [
         {
@@ -127,7 +133,7 @@ export default {
   },
   methods: {
     doesColumnNameExist(name) {
-      return this.columns.filter((x) => x.Name.toLowerCase() === name.toLowerCase()).length > 0;
+      return this.columns.filter((x) => x.Name.toLowerCase() === name.toLowerCase()).length === 0;
     },
     getIcon(type) {
       switch (type) {
@@ -172,34 +178,44 @@ export default {
     },
     handleColumnDrop(data) {
       const cursorPos = this.getFunctionCursorPosition();
-      this.func.Definition =
-        this.func.Definition.substring(0, cursorPos) +
+
+      this.func.CalculationDefinition =
+        this.func.CalculationDefinition.substring(0, cursorPos) +
         `[${data.item.Name}]` +
-        this.func.Definition.substring(cursorPos, this.func.Definition.length);
+        this.func.CalculationDefinition.substring(cursorPos, this.func.CalculationDefinition.length);
     },
     async isFunctionValid() {
       this.func.IsValid = await this.validateFunction();
       this.hasRunValidation = true;
     },
+    addEditHandler(isNameUnique) {
+      if (this.func.IsCalculated && isNameUnique) {
+        this.$emit("add", this.func);
+      } else if (this.func.IsCalculated) {
+        this.$emit("update", this.func);
+      } else {
+        this.$emit("add", this.func);
+      }
+    },
     save() {
       this.$refs.funcName.validate();
       this.$refs.funcDef.validate();
 
-      let isNameUnique = this.doesColumnNameExist(this.func.Name);
-
-      if (isNameUnique) {
-        this.$q.dialog({
-          title: "Error",
-          message: "That column name already exists.",
-        });
-        return;
-      }
-
       if (!this.$refs.funcName.hasError && !this.$refs.funcDef.hasError) {
+        let isNameUnique = this.doesColumnNameExist(this.func.Name);
+
+        if (!isNameUnique && !this.func.IsCalculated) {
+          this.$q.dialog({
+            title: "Error",
+            message: "That column name already exists.",
+          });
+          return;
+        }
+
         this.isFunctionValid().then(() => {
+          this.func.DataType = this.getFunctionDataType();
           if (this.func.IsValid) {
-            this.func.DataType = this.getFunctionDataType();
-            this.$emit("save", this.func);
+            this.addEditHandler(isNameUnique);
           } else {
             this.$q
               .dialog({
@@ -211,7 +227,7 @@ export default {
                 persistent: true,
               })
               .onOk(() => {
-                this.$emit("save", this.func);
+                this.addEditHandler(isNameUnique);
               });
           }
         });
@@ -221,17 +237,15 @@ export default {
     validateFunction() {
       try {
         this.$sql(this.funcQuery, [this.data.slice(0, 10)]);
-        // console.log("results: ", results);
         return true;
       } catch (err) {
-        // console.log("err: ", err);
         return false;
       }
     },
   },
   computed: {
     funcQuery() {
-      return `SELECT ${this.func.Definition} FROM ?`;
+      return `SELECT ${this.func.CalculationDefinition} FROM ?`;
     },
   },
 };

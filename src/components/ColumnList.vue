@@ -12,13 +12,13 @@
                 <q-icon :name="getIcon(item.DataType)" class="q-mr-sm" />{{ item.Name }}
               </q-item-label>
             </q-item-section>
-            <q-item-section v-if="item.Calculation.IsCalculated" side>
+            <q-item-section v-if="item.IsCalculated" side>
               <q-icon
                 name="edit"
                 color="white"
                 class="q-mr-sm"
                 style="cursor: pointer;"
-                @click="editCalculatedField"
+                @click="editCalculatedField(item)"
               />
             </q-item-section>
           </q-item>
@@ -56,8 +56,8 @@ export default {
           return "fas fa-font";
       }
     },
-    editCalculatedField() {
-      this.$emit("editcalculatedfield");
+    editCalculatedField(field) {
+      this.$emit("editcalculatedfield", field);
     },
   },
 };
