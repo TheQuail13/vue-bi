@@ -117,7 +117,7 @@
                         filled
                         v-model="itm.Filter.SelectedValues"
                         multiple
-                        :options="getDistinctValues(itm.Name)"
+                        :options="getDistinctValues(itm)"
                         class="q-my-xs"
                       />
                     </q-popup-edit>
@@ -277,13 +277,19 @@ export default {
   },
   methods: {
     capitalize,
-    getDistinctValues(columnName) {
-      const query = `SELECT DISTINCT ${columnName} FROM ?`;
+    getDistinctValues(column) {
+      const query = `SELECT DISTINCT ${
+        !column.Calculation.IsCalculated ? column.Name : column.Calculation.Definition
+      } FROM ?`;
       const result = this.$sql(query, [this.flatFileData]);
       return result.map((itm) => Object.values(itm)[0]).sort();
     },
     queryData(reprocess) {
       let filterClause;
+      let filterCheck =
+        this.selectedFilterSeries.length > 0 &&
+        (this.selectedFilterSeries[0].Filter.Value ||
+          this.selectedFilterSeries[0].Filter.SelectedValues.length > 0);
 
       // Generate the columns to aggregate in the select clause
       let selectClause = this.selectedDataSeries
@@ -297,15 +303,18 @@ export default {
         .reduce((acc, obj) => `${acc}, ${obj}`);
 
       // If any filters, generate the where clause
-      if (
-        this.selectedFilterSeries.length > 0 &&
-        (this.selectedFilterSeries[0].Filter.Value ||
-          this.selectedFilterSeries[0].Filter.SelectedValues.length > 0)
-      ) {
+      if (filterCheck) {
         filterClause = this.selectedFilterSeries
           .map((itm) => {
-            const colName = `${itm.DataType === "number" ? `[${itm.Name}]` : `LOWER([${itm.Name}])`}`;
+            let colName;
             let colValue;
+
+            if (!itm.Calculation.IsCalculated) {
+              colName = `${itm.DataType === "number" ? `[${itm.Name}]` : `LOWER([${itm.Name}])`}`;
+            } else {
+              colName = itm.Calculation.Definition;
+            }
+
             if (itm.DataType === "number") {
               colValue = itm.Filter.Value;
             } else {
@@ -325,6 +334,7 @@ export default {
                 colValue = `'${itm.Filter.Value.toLowerCase()}'`;
               }
             }
+            console.log(colName, colValue);
 
             return `${colName} ${itm.Filter.Operator} ${colValue}`;
           })
@@ -355,7 +365,7 @@ export default {
 
       // Compile executed query
       const query = `SELECT [${this.selectedXaxisDimension.Name}], ${selectClause} FROM ? ${
-        this.selectedFilterSeries.length > 0 ? filterClause : ""
+        filterCheck ? filterClause : ""
       } GROUP BY [${this.selectedXaxisDimension.Name}] ORDER BY ${sortClause}`;
 
       console.log(query);
