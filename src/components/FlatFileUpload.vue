@@ -1,6 +1,6 @@
 <template>
   <div class="row justify-center items-center" style="height: 90vh;">
-    <q-card>
+    <q-card style="border-radius: 1.5em;">
       <drop class="drop" @drop="handleFileDrop">
         <h4>Drop an Excel or CSV file here to begin</h4>
       </drop>
@@ -36,6 +36,6 @@ export default {
 }
 
 .drop:hover {
-  border: 4px dashed;
+  border: 3px dashed;
 }
 </style>

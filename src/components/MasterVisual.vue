@@ -25,7 +25,7 @@
           </template>
         </q-select>
         <q-btn
-          color="green"
+          color="orange"
           label="Add Calculated Field"
           class="full-width"
           @click="showCalculatedField = true"

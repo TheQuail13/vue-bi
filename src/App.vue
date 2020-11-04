@@ -6,7 +6,7 @@
         <q-toolbar-title>
           VueBI
         </q-toolbar-title>
-        <div>v 0.0.1</div>
+        <div>v {{ version }}</div>
       </q-toolbar>
     </q-header>
 
@@ -94,15 +94,15 @@ export default {
     return {
       leftDrawerOpen: false,
       file: null,
+      version: process.env.VUE_APP_VERSION,
     };
   },
 
   methods: {
     handleUpload(file) {
       this.file = file;
+      console.log();
     },
   },
 };
 </script>
-
-<style></style>
