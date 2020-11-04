@@ -72,12 +72,14 @@
     </q-drawer> -->
 
     <q-page-container>
-      <MasterVisual />
+      <FlatFileUpload v-if="!file" @upload="handleUpload" />
+      <MasterVisual v-else :file="file" />
     </q-page-container>
   </q-layout>
 </template>
 
 <script>
+import FlatFileUpload from "./components/FlatFileUpload.vue";
 import MasterVisual from "./components/MasterVisual.vue";
 
 export default {
@@ -85,12 +87,20 @@ export default {
 
   components: {
     MasterVisual,
+    FlatFileUpload,
   },
 
   data() {
     return {
       leftDrawerOpen: false,
+      file: null,
     };
+  },
+
+  methods: {
+    handleUpload(file) {
+      this.file = file;
+    },
   },
 };
 </script>

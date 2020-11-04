@@ -16,18 +16,14 @@ addEventListener('message', event => {
         let sheetName = workbook.SheetNames[0];
         let worksheet = workbook.Sheets[sheetName];
 
-        // console.time("typeCheckData");
         let typeCheckData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-        // console.timeEnd("typeCheckData");
         let fileHeaders = typeCheckData[0];
 
-        // console.time("fileData");
         let fileData = XLSX.utils.sheet_to_json(worksheet, {
             header: 0,
             blankrows: true,
             defval: null,
         });
-        // console.timeEnd("fileData");
 
         postMessage({ headers: fileHeaders, typeCheckData: typeCheckData, fileData: fileData})
     };

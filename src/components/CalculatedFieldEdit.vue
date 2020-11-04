@@ -188,7 +188,7 @@ export default {
       this.func.IsValid = await this.validateFunction();
       this.hasRunValidation = true;
     },
-    addEditHandler(isNameUnique) {
+    handlerAddEdit(isNameUnique) {
       if (this.func.IsCalculated && isNameUnique) {
         this.$emit("add", this.func);
       } else if (this.func.IsCalculated) {
@@ -215,7 +215,7 @@ export default {
         this.isFunctionValid().then(() => {
           this.func.DataType = this.getFunctionDataType();
           if (this.func.IsValid) {
-            this.addEditHandler(isNameUnique);
+            this.handlerAddEdit(isNameUnique);
           } else {
             this.$q
               .dialog({
@@ -227,7 +227,7 @@ export default {
                 persistent: true,
               })
               .onOk(() => {
-                this.addEditHandler(isNameUnique);
+                this.handlerAddEdit(isNameUnique);
               });
           }
         });

@@ -21,19 +21,30 @@
           @editcalculatedfield="editCalculatedField"
         />
       </div>
-      <div class="col-10">
+      <div class="col-10 q-pl-lg">
         <div class="row">
-          <div class="col-8 q-px-lg">
-            <drop class="drop q-mr-md" @drop="handleXDrop">{{
-              selectedXaxisDimension.Name ? selectedXaxisDimension.Name : "X-Axis"
-            }}</drop>
-            <drop class="drop q-mr-md" @drop="handleColumnDrop('selectedDataSeries', true, ...arguments)">
+          <div class="col ">
+            <drop
+              :class="['drop q-mr-md', selectedXaxisDimension.Name ? 'bg-orange' : null]"
+              @drop="handleXDrop"
+              >{{ selectedXaxisDimension.Name ? selectedXaxisDimension.Name : "X-Axis" }}
+            </drop>
+            <drop
+              :class="['drop q-mr-md', selectedDataSeries.length > 0 ? 'bg-orange' : null]"
+              @drop="handleColumnDrop('selectedDataSeries', true, ...arguments)"
+            >
               Series
             </drop>
-            <drop class="drop q-mr-md" @drop="handleColumnDrop('selectedSortSeries', true, ...arguments)">
+            <drop
+              :class="['drop q-mr-md', selectedSortSeries.length > 0 ? 'bg-orange' : null]"
+              @drop="handleColumnDrop('selectedSortSeries', true, ...arguments)"
+            >
               Sort By
             </drop>
-            <drop class="drop" @drop="handleColumnDrop('selectedFilterSeries', false, ...arguments)">
+            <drop
+              :class="['drop q-mr-md', selectedFilterSeries.length > 0 ? 'bg-orange' : null]"
+              @drop="handleColumnDrop('selectedFilterSeries', false, ...arguments)"
+            >
               Filter
             </drop>
             <div class="row q-mt-md">
@@ -129,43 +140,9 @@
               </div>
             </div>
           </div>
-          <div class="col-4 q-px-lg">
-            <q-file
-              v-model="files"
-              label="Drop an excel or CSV file here"
-              filled
-              max-files="1"
-              multiple
-              clearable
-              @input="parseFile"
-            >
-            </q-file>
-            <q-select
-              outlined
-              v-model="chartType"
-              :options="chartTypeOptions"
-              label="Select a chart type"
-              class="q-mt-md"
-              map-options
-              option-label="name"
-              option-value="name"
-              @input="setChartType"
-            >
-              <template v-slot:option="scope">
-                <q-item v-bind="scope.itemProps" v-on="scope.itemEvents">
-                  <q-item-section>
-                    <q-item-label>{{ capitalize(scope.opt.name) }}</q-item-label>
-                  </q-item-section>
-                  <q-item-section side>
-                    <q-icon :name="scope.opt.icon" />
-                  </q-item-section>
-                </q-item>
-              </template>
-            </q-select>
-          </div>
         </div>
         <div class="row justify-center">
-          <div class="col q-px-lg">
+          <div class="col-9 q-px-lg">
             <apexchart
               height="750"
               width="100%"
@@ -173,6 +150,25 @@
               :options="graphOptions"
               :series="graphData"
             />
+          </div>
+          <div class="col-3 q-px-lg">
+            <q-item-label header>
+              <strong>Chart Types</strong>
+            </q-item-label>
+            <q-list>
+              <q-virtual-scroll style="height: 50vh;" :items="chartTypeOptions">
+                <template v-slot="{ item, index }">
+                  <q-item :key="index" style="cursor: pointer;" @click.native="setChartType(item)">
+                    <q-item-section>
+                      <q-item-label>{{ capitalize(item.name) }}</q-item-label>
+                    </q-item-section>
+                    <q-item-section side>
+                      <q-icon :name="item.icon" />
+                    </q-item-section>
+                  </q-item>
+                </template>
+              </q-virtual-scroll>
+            </q-list>
           </div>
         </div>
       </div>
@@ -221,6 +217,12 @@ export default {
     CalculatedFieldEdit,
     ColumnList,
   },
+  props: {
+    file: {
+      type: Array,
+      required: true,
+    },
+  },
   data() {
     return {
       aggOptions: ["sum", "count", "avg", "max", "min"],
@@ -239,7 +241,6 @@ export default {
       ],
       baseColorPalette: ["#008FFB", "#00E396", "#FEB019", "#FF4560", "#775DD0"],
       columns: [],
-      files: [],
       filterOperators: [""],
       flatFileData: [],
       graphData: [
@@ -406,7 +407,7 @@ export default {
     },
     parseFile() {
       this.isLoading = true;
-      XlsxParseWorker.send(this.files[0]);
+      XlsxParseWorker.send(this.file[0]);
     },
     processFileResults(headers, typeCheckData) {
       // loop through each row of data to determine datatype
@@ -538,7 +539,9 @@ export default {
         this.isLoading = false;
       }
     },
-    setChartType() {
+    setChartType(chart) {
+      console.log(chart);
+      this.chartType = chart;
       if (!this.chartType.isCartesian) {
         this.selectedDataSeries.length = 1;
       }
@@ -557,7 +560,7 @@ export default {
     parseDataForTable() {
       this.showTable = true;
       if (this.tableData.length === 0) {
-        XlsxTableParseWorker.send(this.files[0]);
+        XlsxTableParseWorker.send(this.file[0]);
       }
     },
     saveCalculatedField(field) {
@@ -623,6 +626,15 @@ export default {
         this.tableData = event.data;
       }
     };
+  },
+
+  watch: {
+    file: {
+      handler() {
+        this.parseFile();
+      },
+      immediate: true,
+    },
   },
 };
 </script>
