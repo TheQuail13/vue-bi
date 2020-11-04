@@ -540,12 +540,13 @@ export default {
       }
     },
     setChartType(chart) {
-      console.log(chart);
-      this.chartType = chart;
-      if (!this.chartType.isCartesian) {
-        this.selectedDataSeries.length = 1;
+      if (this.chartType.name !== chart.name) {
+        this.chartType = chart;
+        if (!this.chartType.isCartesian) {
+          this.selectedDataSeries.length = 1;
+        }
+        this.computeGraphData(true);
       }
-      this.computeGraphData(true);
     },
     removeFromArray(arrayName, idx) {
       this[arrayName].splice(idx, 1);
