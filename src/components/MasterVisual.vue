@@ -30,6 +30,7 @@
           class="full-width"
           @click="showCalculatedField = true"
         />
+        <q-input v-model="colSearchTerm" label="Search for a column" clearable />
         <column-list
           header="Dimensions"
           :columns="colDimensions"
@@ -272,6 +273,7 @@ export default {
       },
       isLoading: false,
       latestQuery: "",
+      colSearchTerm: "",
       selectedDataSeries: [],
       selectedFilterSeries: [],
       selectedSortSeries: [],
@@ -598,7 +600,12 @@ export default {
     colDimensions() {
       if (this.columns.length > 0) {
         return this.columns
-          .filter((x) => x.DataType !== "number")
+          .filter((x) =>
+            !this.colSearchTerm
+              ? x.DataType !== "number"
+              : x.DataType !== "number" &&
+                x.Name.toLowerCase().indexOf(this.colSearchTerm.toLowerCase()) !== -1
+          )
           .sort((a, b) => a.Name.localeCompare(b.Name));
       }
       return [];
@@ -606,7 +613,12 @@ export default {
     colValues() {
       if (this.columns.length > 0) {
         return this.columns
-          .filter((x) => x.DataType === "number")
+          .filter((x) =>
+            !this.colSearchTerm
+              ? x.DataType === "number"
+              : x.DataType === "number" &&
+                x.Name.toLowerCase().indexOf(this.colSearchTerm.toLowerCase()) !== -1
+          )
           .sort((a, b) => a.Name.localeCompare(b.Name));
       }
       return [];
