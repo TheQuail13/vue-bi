@@ -1,12 +1,12 @@
 <template>
   <q-list>
-    <q-item-label header>
+    <q-item-label header class="text-center q-pb-xs">
       <strong>{{ header }}</strong>
     </q-item-label>
     <q-virtual-scroll style="height: 40vh;" :items="columns">
       <template v-slot="{ item, index }">
         <drag style="cursor: move;" :transfer-data="{ item }">
-          <q-item :key="index" :class="[`bg-${color}`, 'text-white q-my-xs rounded-borders']">
+          <q-item :key="index" :class="[`bg-${color}`, 'text-white q-my-sm rounded-borders']">
             <q-item-section>
               <q-item-label>
                 <q-icon :name="getIcon(item.DataType)" class="q-mr-sm" />{{ item.Name }}

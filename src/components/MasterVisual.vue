@@ -2,6 +2,28 @@
   <q-page padding class="main-page">
     <div class="row justify-center">
       <div class="col-2">
+        <q-select
+          outlined
+          v-model="chartType"
+          :options="chartTypeOptions"
+          label="Select a chart type"
+          class="q-mb-lg"
+          map-options
+          option-label="name"
+          option-value="name"
+          @input="setChartType"
+        >
+          <template v-slot:option="scope">
+            <q-item v-bind="scope.itemProps" v-on="scope.itemEvents">
+              <q-item-section>
+                <q-item-label>{{ capitalize(scope.opt.name) }}</q-item-label>
+              </q-item-section>
+              <q-item-section side>
+                <q-icon :name="scope.opt.icon" />
+              </q-item-section>
+            </q-item>
+          </template>
+        </q-select>
         <q-btn
           color="green"
           label="Add Calculated Field"
@@ -23,7 +45,7 @@
       </div>
       <div class="col-10 q-pl-lg">
         <div class="row">
-          <div class="col ">
+          <div class="col">
             <drop
               :class="['drop q-mr-md', selectedXaxisDimension.Name ? 'bg-orange' : null]"
               @drop="handleXDrop"
@@ -141,36 +163,13 @@
             </div>
           </div>
         </div>
-        <div class="row justify-center">
-          <div class="col-9 q-px-lg">
-            <apexchart
-              height="750"
-              width="100%"
-              :type="chartType.type"
-              :options="graphOptions"
-              :series="graphData"
-            />
-          </div>
-          <div class="col-3 q-px-lg">
-            <q-item-label header>
-              <strong>Chart Types</strong>
-            </q-item-label>
-            <q-list>
-              <q-virtual-scroll style="height: 50vh;" :items="chartTypeOptions">
-                <template v-slot="{ item, index }">
-                  <q-item :key="index" style="cursor: pointer;" @click.native="setChartType(item)">
-                    <q-item-section>
-                      <q-item-label>{{ capitalize(item.name) }}</q-item-label>
-                    </q-item-section>
-                    <q-item-section side>
-                      <q-icon :name="item.icon" />
-                    </q-item-section>
-                  </q-item>
-                </template>
-              </q-virtual-scroll>
-            </q-list>
-          </div>
-        </div>
+        <apexchart
+          height="750"
+          width="100%"
+          :type="chartType.type"
+          :options="graphOptions"
+          :series="graphData"
+        />
       </div>
     </div>
 
@@ -239,7 +238,7 @@ export default {
         { name: "Radar", type: "radar", icon: "fas fa-chart-pie", isCartesian: false },
         { name: "Scatter", type: "scatter", icon: "fas fa-chart-pie", isCartesian: true },
       ],
-      baseColorPalette: ["#008FFB", "#00E396", "#FEB019", "#FF4560", "#775DD0"],
+      baseColorPalette: ["#33b8ff", "#00E396", "#FEB019", "#FF4560", "#775DD0"],
       columns: [],
       filterOperators: [""],
       flatFileData: [],
