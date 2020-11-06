@@ -1,6 +1,6 @@
 <template>
   <q-page padding class="main-page">
-    <div class="row justify-center">
+    <div class="row justify-center q-col-gutter-md">
       <div class="col-2">
         <q-select
           outlined
@@ -38,7 +38,7 @@
         />
         <column-list header="Values" :columns="colValues" @editcalculatedfield="editCalculatedField" />
       </div>
-      <div class="col-2 q-px-md">
+      <div class="col-2">
         <drop
           :class="['full-width drop ', selectedFilterSeries.length > 0 ? 'bg-orange' : null]"
           @drop="handleColumnDrop('selectedFilterSeries', false, ...arguments)"
@@ -121,47 +121,51 @@
         </q-virtual-scroll>
       </div>
       <div class="col-8">
-        <drop
-          :class="['drop drop-main q-mr-md', selectedXaxisDimension.Name ? 'bg-orange' : null]"
-          @drop="handleXDrop"
-          >{{ selectedXaxisDimension.Name ? selectedXaxisDimension.Name : "X-Axis" }}
-        </drop>
-        <drop
-          :class="['drop drop-main q-mr-md', selectedDataSeries.length > 0 ? 'bg-orange' : null]"
-          @drop="handleColumnDrop('selectedDataSeries', true, ...arguments)"
-        >
-          Series
-        </drop>
-
-        <div class="row q-my-lg">
-          <div class="col q-mr-md">
-            <div class="text-center"><strong>Series</strong></div>
-            <q-list bordered separator class="q-mt-md">
-              <q-item v-for="(itm, idx) in selectedDataSeries" :key="idx" style="cursor: pointer;">
-                <q-item-section>{{ itm.Name }}</q-item-section>
-                <q-item-section side>
-                  <q-icon name="close" @click="removeFromArray('selectedDataSeries', idx)" />
-                </q-item-section>
-                <q-popup-edit v-model="itm.IsEditing" @before-hide="computeGraphData(true)">
-                  <q-select
-                    outlined
-                    v-model="itm.AggType"
-                    :options="getAggTypes(itm.DataType)"
-                    label="Select an aggregation type"
-                  />
-                  <q-input label="Label" v-model="itm.Label" outlined class="q-my-xs" />
-                  <q-input label="Color" v-model="itm.Color" outlined class="q-my-xs">
-                    <template v-slot:append>
-                      <q-icon name="colorize" class="cursor-pointer">
-                        <q-popup-proxy transition-show="scale" transition-hide="scale">
-                          <q-color v-model="itm.Color" no-header no-footer />
-                        </q-popup-proxy>
-                      </q-icon>
-                    </template>
-                  </q-input>
-                </q-popup-edit>
+        <div class="row q-mb-lg q-col-gutter-md">
+          <div class="col-3">
+            <drop class="bg-grey-4 series-drop" @drop="handleXDrop">
+              <q-item :class="['col-3 q-mb-md rounded-borders', `bg-${selectedXaxisDimension.ItemColor}`]">
+                <q-item-section class="text-white">{{
+                  selectedXaxisDimension.Name ? selectedXaxisDimension.Name : "X-Axis"
+                }}</q-item-section>
               </q-item>
-            </q-list>
+            </drop>
+          </div>
+          <div class="col-3 q-mb-md" v-for="(itm, idx) in selectedDataSeries" :key="idx">
+            <q-item style="cursor: pointer;" :class="[`bg-${itm.ItemColor}`, 'text-white rounded-borders']">
+              <q-item-section>{{ itm.Name }}</q-item-section>
+              <q-item-section side>
+                <q-icon name="close" @click="removeFromArray('selectedDataSeries', idx)" />
+              </q-item-section>
+              <q-popup-edit v-model="itm.IsEditing" @before-hide="computeGraphData(true)">
+                <q-select
+                  outlined
+                  v-model="itm.AggType"
+                  :options="getAggTypes(itm.DataType)"
+                  label="Select an aggregation type"
+                />
+                <q-input label="Label" v-model="itm.Label" outlined class="q-my-xs" />
+                <q-input label="Color" v-model="itm.Color" outlined class="q-my-xs">
+                  <template v-slot:append>
+                    <q-icon name="colorize" class="cursor-pointer">
+                      <q-popup-proxy transition-show="scale" transition-hide="scale">
+                        <q-color v-model="itm.Color" no-header no-footer />
+                      </q-popup-proxy>
+                    </q-icon>
+                  </template>
+                </q-input>
+              </q-popup-edit>
+            </q-item>
+          </div>
+          <div class="col-3 ">
+            <drop
+              class="bg-grey-4 series-drop"
+              @drop="handleColumnDrop('selectedDataSeries', true, ...arguments)"
+            >
+              <q-item class="col-3 q-mb-md">
+                <q-item-section>Series</q-item-section>
+              </q-item>
+            </drop>
           </div>
         </div>
 
@@ -659,12 +663,17 @@ export default {
   border-radius: 3px;
   padding: 14px;
   text-align: center;
-
-  background: #eee;
+  background: #e0e0e0;
 }
 
 .drop-main {
   min-width: 48%;
+}
+
+.series-drop {
+  border-radius: 3px;
+  text-align: center;
+  background: #e0e0e0;
 }
 
 /* Hide scrollbar for Chrome, Safari and Opera */
