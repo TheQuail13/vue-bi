@@ -39,15 +39,12 @@
         <column-list header="Values" :columns="colValues" @editcalculatedfield="editCalculatedField" />
       </div>
       <div class="col-2 q-px-md">
-        <!-- <q-item> -->
         <drop
           :class="['full-width drop ', selectedFilterSeries.length > 0 ? 'bg-orange' : null]"
           @drop="handleColumnDrop('selectedFilterSeries', false, ...arguments)"
         >
           Filter
         </drop>
-        <!-- </q-item> -->
-
         <q-virtual-scroll style="height: 25vh;" :items="selectedFilterSeries" separator>
           <template v-slot="{ item, index }">
             <q-item
@@ -85,6 +82,43 @@
             </q-item>
           </template>
         </q-virtual-scroll>
+
+        <drop
+          :class="['full-width drop ', selectedSortSeries.length > 0 ? 'bg-orange' : null]"
+          @drop="handleColumnDrop('selectedSortSeries', true, ...arguments)"
+        >
+          Sort By
+        </drop>
+        <q-virtual-scroll style="height: 40vh;" :items="selectedSortSeries" separator>
+          <template v-slot="{ item, index }">
+            <q-item
+              :key="index"
+              style="cursor: pointer; border-radius: 3px;"
+              :class="[`bg-${item.ItemColor}`, 'text-white q-my-sm']"
+            >
+              <q-item-section>{{ item.Name }}</q-item-section>
+              <q-popup-edit v-model="item.IsEditing" @before-hide="computeGraphData(true)">
+                <q-select
+                  outlined
+                  v-model="item.Sort.Direction"
+                  :options="['asc', 'desc']"
+                  label="Sort Direction"
+                  class="q-my-xs"
+                />
+                <q-select
+                  outlined
+                  v-model="item.Sort.Aggregation"
+                  :options="['sum', 'none']"
+                  label="Sort Aggregation"
+                  class="q-my-xs"
+                />
+              </q-popup-edit>
+              <q-item-section side>
+                <q-icon name="close" @click="removeFromArray('selectedSortSeries', index)" />
+              </q-item-section>
+            </q-item>
+          </template>
+        </q-virtual-scroll>
       </div>
       <div class="col-8">
         <drop
@@ -98,14 +132,8 @@
         >
           Series
         </drop>
-        <drop
-          :class="['drop drop-main q-mr-md', selectedSortSeries.length > 0 ? 'bg-orange' : null]"
-          @drop="handleColumnDrop('selectedSortSeries', true, ...arguments)"
-        >
-          Sort By
-        </drop>
 
-        <div class="row q-mt-md">
+        <div class="row q-my-lg">
           <div class="col q-mr-md">
             <div class="text-center"><strong>Series</strong></div>
             <q-list bordered separator class="q-mt-md">
@@ -132,33 +160,6 @@
                     </template>
                   </q-input>
                 </q-popup-edit>
-              </q-item>
-            </q-list>
-          </div>
-          <div class="col q-mr-md">
-            <div class="text-center"><strong>Sorting</strong></div>
-            <q-list bordered separator class="q-mt-md">
-              <q-item v-for="(itm, idx) in selectedSortSeries" :key="idx" style="cursor: pointer;">
-                <q-item-section>{{ itm.Name }}</q-item-section>
-                <q-popup-edit v-model="itm.IsEditing" @before-hide="computeGraphData(true)">
-                  <q-select
-                    outlined
-                    v-model="itm.Sort.Direction"
-                    :options="['asc', 'desc']"
-                    label="Sort Direction"
-                    class="q-my-xs"
-                  />
-                  <q-select
-                    outlined
-                    v-model="itm.Sort.Aggregation"
-                    :options="['sum', 'none']"
-                    label="Sort Aggregation"
-                    class="q-my-xs"
-                  />
-                </q-popup-edit>
-                <q-item-section side>
-                  <q-icon name="close" @click="removeFromArray('selectedSortSeries', idx)" />
-                </q-item-section>
               </q-item>
             </q-list>
           </div>
@@ -663,7 +664,7 @@ export default {
 }
 
 .drop-main {
-  min-width: 31%;
+  min-width: 48%;
 }
 
 /* Hide scrollbar for Chrome, Safari and Opera */
