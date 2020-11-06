@@ -24,19 +24,26 @@
             </q-item>
           </template>
         </q-select>
-        <q-btn
-          color="orange"
-          label="Add Calculated Field"
-          class="full-width"
-          @click="showCalculatedField = true"
+        <q-input
+          dense
+          v-model="colSearchTerm"
+          class="q-mt-md"
+          label="Search for a column"
+          standout="bg-info text-white"
+          clearable
         />
-        <q-input v-model="colSearchTerm" label="Search for a column" clearable />
         <column-list
           header="Dimensions"
           :columns="colDimensions"
           @editcalculatedfield="editCalculatedField"
         />
         <column-list header="Values" :columns="colValues" @editcalculatedfield="editCalculatedField" />
+        <q-btn
+          color="orange"
+          label="Add Calculated Field"
+          class="full-width q-mt-md"
+          @click="showCalculatedField = true"
+        />
       </div>
       <div class="col-2">
         <drop
@@ -121,17 +128,17 @@
         </q-virtual-scroll>
       </div>
       <div class="col-8">
-        <div class="row q-mb-lg q-col-gutter-md">
+        <div class="row q-mb-lg q-col-gutter-sm">
           <div class="col-3">
             <drop class="bg-grey-4 series-drop" @drop="handleXDrop">
-              <q-item :class="['col-3 q-mb-md rounded-borders', `bg-${selectedXaxisDimension.ItemColor}`]">
-                <q-item-section class="text-white">{{
+              <q-item :class="['col-3 rounded-borders', `bg-${selectedXaxisDimension.ItemColor}`]">
+                <q-item-section :class="[selectedXaxisDimension.Name ? 'text-white' : null]">{{
                   selectedXaxisDimension.Name ? selectedXaxisDimension.Name : "X-Axis"
                 }}</q-item-section>
               </q-item>
             </drop>
           </div>
-          <div class="col-3 q-mb-md" v-for="(itm, idx) in selectedDataSeries" :key="idx">
+          <div class="col-3" v-for="(itm, idx) in selectedDataSeries" :key="idx">
             <q-item style="cursor: pointer;" :class="[`bg-${itm.ItemColor}`, 'text-white rounded-borders']">
               <q-item-section>{{ itm.Name }}</q-item-section>
               <q-item-section side>
@@ -162,7 +169,7 @@
               class="bg-grey-4 series-drop"
               @drop="handleColumnDrop('selectedDataSeries', true, ...arguments)"
             >
-              <q-item class="col-3 q-mb-md">
+              <q-item class="col-3">
                 <q-item-section>Series</q-item-section>
               </q-item>
             </drop>
@@ -460,6 +467,20 @@ export default {
 
       this.columns = dataTypeArrCheck;
     },
+    selectInitialGraphData() {
+      const xAxisIdx = this.getRandomInt(0, this.colDimensions.length);
+      const dataSeriesIdx = this.getRandomInt(0, this.colValues.length);
+
+      this.selectedXaxisDimension = this.colDimensions[xAxisIdx];
+      this.selectedDataSeries.push(this.colValues[dataSeriesIdx]);
+
+      this.computeGraphData();
+    },
+    getRandomInt(min, max) {
+      min = Math.ceil(min);
+      max = Math.floor(max);
+      return Math.floor(Math.random() * (max - min) + min); //The maximum is exclusive and the minimum is inclusive
+    },
     editCalculatedField(field) {
       this.calculatedFieldToEdit = JSON.parse(JSON.stringify(field));
       this.showCalculatedField = true;
@@ -635,6 +656,7 @@ export default {
       if (event.data.fileData) {
         this.processFileResults(event.data.headers, event.data.typeCheckData);
         this.flatFileData = Object.freeze(event.data.fileData);
+        this.selectInitialGraphData();
         this.isLoading = false;
       }
     };
