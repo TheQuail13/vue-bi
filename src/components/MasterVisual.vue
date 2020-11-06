@@ -84,7 +84,7 @@
                 />
               </q-popup-edit>
               <q-item-section side @click="removeFromArray('selectedFilterSeries', index)">
-                <q-icon name="close" />
+                <q-icon name="close" color="white" />
               </q-item-section>
             </q-item>
           </template>
@@ -121,7 +121,7 @@
                 />
               </q-popup-edit>
               <q-item-section side>
-                <q-icon name="close" @click="removeFromArray('selectedSortSeries', index)" />
+                <q-icon name="close" @click="removeFromArray('selectedSortSeries', index)" color="white" />
               </q-item-section>
             </q-item>
           </template>
@@ -142,7 +142,7 @@
             <q-item style="cursor: pointer;" :class="[`bg-${itm.ItemColor}`, 'text-white rounded-borders']">
               <q-item-section>{{ itm.Name }}</q-item-section>
               <q-item-section side>
-                <q-icon name="close" @click="removeFromArray('selectedDataSeries', idx)" />
+                <q-icon name="close" @click="removeFromArray('selectedDataSeries', idx)" color="white" />
               </q-item-section>
               <q-popup-edit v-model="itm.IsEditing" @before-hide="computeGraphData(true)">
                 <q-select
