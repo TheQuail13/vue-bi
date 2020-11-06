@@ -34,136 +34,136 @@
         <column-list
           header="Dimensions"
           :columns="colDimensions"
-          color="primary"
           @editcalculatedfield="editCalculatedField"
         />
-        <column-list
-          header="Values"
-          :columns="colValues"
-          color="green"
-          @editcalculatedfield="editCalculatedField"
-        />
+        <column-list header="Values" :columns="colValues" @editcalculatedfield="editCalculatedField" />
       </div>
-      <div class="col-10 q-pl-lg">
-        <div class="row">
-          <div class="col">
-            <drop
-              :class="['drop q-mr-md', selectedXaxisDimension.Name ? 'bg-orange' : null]"
-              @drop="handleXDrop"
-              >{{ selectedXaxisDimension.Name ? selectedXaxisDimension.Name : "X-Axis" }}
-            </drop>
-            <drop
-              :class="['drop q-mr-md', selectedDataSeries.length > 0 ? 'bg-orange' : null]"
-              @drop="handleColumnDrop('selectedDataSeries', true, ...arguments)"
+      <div class="col-2 q-px-md">
+        <!-- <q-item> -->
+        <drop
+          :class="['full-width drop ', selectedFilterSeries.length > 0 ? 'bg-orange' : null]"
+          @drop="handleColumnDrop('selectedFilterSeries', false, ...arguments)"
+        >
+          Filter
+        </drop>
+        <!-- </q-item> -->
+
+        <q-virtual-scroll style="height: 25vh;" :items="selectedFilterSeries" separator>
+          <template v-slot="{ item, index }">
+            <q-item
+              :key="index"
+              style="cursor: pointer; border-radius: 3px;"
+              :class="[`bg-${item.ItemColor}`, 'text-white q-my-sm']"
             >
-              Series
-            </drop>
-            <drop
-              :class="['drop q-mr-md', selectedSortSeries.length > 0 ? 'bg-orange' : null]"
-              @drop="handleColumnDrop('selectedSortSeries', true, ...arguments)"
-            >
-              Sort By
-            </drop>
-            <drop
-              :class="['drop q-mr-md', selectedFilterSeries.length > 0 ? 'bg-orange' : null]"
-              @drop="handleColumnDrop('selectedFilterSeries', false, ...arguments)"
-            >
-              Filter
-            </drop>
-            <div class="row q-mt-md">
-              <div class="col q-mr-md">
-                <div class="text-center"><strong>Series</strong></div>
-                <q-list bordered separator class="q-mt-md">
-                  <q-item v-for="(itm, idx) in selectedDataSeries" :key="idx" style="cursor: pointer;">
-                    <q-item-section>{{ itm.Name }}</q-item-section>
-                    <q-item-section side>
-                      <q-icon name="close" @click="removeFromArray('selectedDataSeries', idx)" />
-                    </q-item-section>
-                    <q-popup-edit v-model="itm.IsEditing" @before-hide="computeGraphData(true)">
-                      <q-select
-                        outlined
-                        v-model="itm.AggType"
-                        :options="getAggTypes(itm.DataType)"
-                        label="Select an aggregation type"
-                      />
-                      <q-input label="Label" v-model="itm.Label" outlined class="q-my-xs" />
-                      <q-input label="Color" v-model="itm.Color" outlined class="q-my-xs">
-                        <template v-slot:append>
-                          <q-icon name="colorize" class="cursor-pointer">
-                            <q-popup-proxy transition-show="scale" transition-hide="scale">
-                              <q-color v-model="itm.Color" no-header no-footer />
-                            </q-popup-proxy>
-                          </q-icon>
-                        </template>
-                      </q-input>
-                    </q-popup-edit>
-                  </q-item>
-                </q-list>
-              </div>
-              <div class="col q-mr-md">
-                <div class="text-center"><strong>Sorting</strong></div>
-                <q-list bordered separator class="q-mt-md">
-                  <q-item v-for="(itm, idx) in selectedSortSeries" :key="idx" style="cursor: pointer;">
-                    <q-item-section>{{ itm.Name }}</q-item-section>
-                    <q-popup-edit v-model="itm.IsEditing" @before-hide="computeGraphData(true)">
-                      <q-select
-                        outlined
-                        v-model="itm.Sort.Direction"
-                        :options="['asc', 'desc']"
-                        label="Sort Direction"
-                        class="q-my-xs"
-                      />
-                      <q-select
-                        outlined
-                        v-model="itm.Sort.Aggregation"
-                        :options="['sum', 'none']"
-                        label="Sort Aggregation"
-                        class="q-my-xs"
-                      />
-                    </q-popup-edit>
-                    <q-item-section side>
-                      <q-icon name="close" @click="removeFromArray('selectedSortSeries', idx)" />
-                    </q-item-section>
-                  </q-item>
-                </q-list>
-              </div>
-              <div class="col">
-                <div class="text-center"><strong>Filters</strong></div>
-                <q-list bordered separator class="q-mt-md">
-                  <q-item v-for="(itm, idx) in selectedFilterSeries" :key="idx" style="cursor: pointer;">
-                    <q-item-section>{{ itm.Name }}</q-item-section>
-                    <q-popup-edit v-model="itm.IsEditing" @before-hide="computeGraphData(true)">
-                      <q-select
-                        outlined
-                        v-model="itm.Filter.Operator"
-                        :options="getFilterTypes(itm.DataType)"
-                        label="Filter Operator"
-                        class="q-my-xs"
-                      />
-                      <q-input
-                        v-if="itm.Filter.Operator !== 'in'"
-                        v-model="itm.Filter.Value"
-                        label="Filter Value"
-                        class="q-my-xs"
-                      />
-                      <q-select
-                        v-else
-                        filled
-                        v-model="itm.Filter.SelectedValues"
-                        multiple
-                        :options="getDistinctValues(itm)"
-                        class="q-my-xs"
-                      />
-                    </q-popup-edit>
-                    <q-item-section side>
-                      <q-icon name="close" @click="removeFromArray('selectedFilterSeries', idx)" />
-                    </q-item-section>
-                  </q-item>
-                </q-list>
-              </div>
-            </div>
+              <q-item-section>{{ item.Name }}</q-item-section>
+              <q-popup-edit v-model="item.IsEditing" @before-hide="computeGraphData(true)" anchor="top left">
+                <q-select
+                  outlined
+                  v-model="item.Filter.Operator"
+                  :options="getFilterTypes(item.DataType)"
+                  label="Filter Operator"
+                  class="q-my-xs"
+                />
+                <q-input
+                  v-if="item.Filter.Operator !== 'in'"
+                  v-model="item.Filter.Value"
+                  label="Filter Value"
+                  class="q-my-xs"
+                />
+                <q-select
+                  v-else
+                  filled
+                  v-model="item.Filter.SelectedValues"
+                  multiple
+                  :options="getDistinctValues(item)"
+                  class="q-my-xs"
+                />
+              </q-popup-edit>
+              <q-item-section side @click="removeFromArray('selectedFilterSeries', index)">
+                <q-icon name="close" />
+              </q-item-section>
+            </q-item>
+          </template>
+        </q-virtual-scroll>
+      </div>
+      <div class="col-8">
+        <drop
+          :class="['drop drop-main q-mr-md', selectedXaxisDimension.Name ? 'bg-orange' : null]"
+          @drop="handleXDrop"
+          >{{ selectedXaxisDimension.Name ? selectedXaxisDimension.Name : "X-Axis" }}
+        </drop>
+        <drop
+          :class="['drop drop-main q-mr-md', selectedDataSeries.length > 0 ? 'bg-orange' : null]"
+          @drop="handleColumnDrop('selectedDataSeries', true, ...arguments)"
+        >
+          Series
+        </drop>
+        <drop
+          :class="['drop drop-main q-mr-md', selectedSortSeries.length > 0 ? 'bg-orange' : null]"
+          @drop="handleColumnDrop('selectedSortSeries', true, ...arguments)"
+        >
+          Sort By
+        </drop>
+
+        <div class="row q-mt-md">
+          <div class="col q-mr-md">
+            <div class="text-center"><strong>Series</strong></div>
+            <q-list bordered separator class="q-mt-md">
+              <q-item v-for="(itm, idx) in selectedDataSeries" :key="idx" style="cursor: pointer;">
+                <q-item-section>{{ itm.Name }}</q-item-section>
+                <q-item-section side>
+                  <q-icon name="close" @click="removeFromArray('selectedDataSeries', idx)" />
+                </q-item-section>
+                <q-popup-edit v-model="itm.IsEditing" @before-hide="computeGraphData(true)">
+                  <q-select
+                    outlined
+                    v-model="itm.AggType"
+                    :options="getAggTypes(itm.DataType)"
+                    label="Select an aggregation type"
+                  />
+                  <q-input label="Label" v-model="itm.Label" outlined class="q-my-xs" />
+                  <q-input label="Color" v-model="itm.Color" outlined class="q-my-xs">
+                    <template v-slot:append>
+                      <q-icon name="colorize" class="cursor-pointer">
+                        <q-popup-proxy transition-show="scale" transition-hide="scale">
+                          <q-color v-model="itm.Color" no-header no-footer />
+                        </q-popup-proxy>
+                      </q-icon>
+                    </template>
+                  </q-input>
+                </q-popup-edit>
+              </q-item>
+            </q-list>
+          </div>
+          <div class="col q-mr-md">
+            <div class="text-center"><strong>Sorting</strong></div>
+            <q-list bordered separator class="q-mt-md">
+              <q-item v-for="(itm, idx) in selectedSortSeries" :key="idx" style="cursor: pointer;">
+                <q-item-section>{{ itm.Name }}</q-item-section>
+                <q-popup-edit v-model="itm.IsEditing" @before-hide="computeGraphData(true)">
+                  <q-select
+                    outlined
+                    v-model="itm.Sort.Direction"
+                    :options="['asc', 'desc']"
+                    label="Sort Direction"
+                    class="q-my-xs"
+                  />
+                  <q-select
+                    outlined
+                    v-model="itm.Sort.Aggregation"
+                    :options="['sum', 'none']"
+                    label="Sort Aggregation"
+                    class="q-my-xs"
+                  />
+                </q-popup-edit>
+                <q-item-section side>
+                  <q-icon name="close" @click="removeFromArray('selectedSortSeries', idx)" />
+                </q-item-section>
+              </q-item>
+            </q-list>
           </div>
         </div>
+
         <apexchart
           height="750"
           width="100%"
@@ -179,7 +179,7 @@
     </q-page-sticky>
 
     <q-dialog v-model="showTable" full-width>
-      <q-card>
+      <q-card v-if="showTable">
         <q-card-section>
           <data-table :table-data="tableData" />
         </q-card-section>
@@ -203,7 +203,6 @@
 </template>
 
 <script>
-import DataTable from "./DataTable";
 import CalculatedFieldEdit from "./CalculatedFieldEdit";
 import ColumnList from "./ColumnList";
 import XlsxParseWorker from "@/xlsx-worker/index.js";
@@ -213,7 +212,7 @@ const { capitalize } = format;
 
 export default {
   components: {
-    DataTable,
+    DataTable: () => import("./DataTable"),
     CalculatedFieldEdit,
     ColumnList,
   },
@@ -450,6 +449,7 @@ export default {
             SelectedValues: [],
           },
           AggType: type === "string" || type === "date" ? "count" : "sum",
+          ItemColor: type === "string" || type === "date" ? "primary" : "green",
         };
       });
 
@@ -584,6 +584,7 @@ export default {
           SelectedValues: [],
         },
         AggType: field.DataType === "string" || field.DataType === "date" ? "count" : "sum",
+        ItemColor: field.DataType === "string" || field.DataType === "date" ? "primary" : "green",
       };
 
       this.columns.push(columnToAdd);
@@ -652,31 +653,17 @@ export default {
 </script>
 
 <style>
-.drag,
 .drop {
-  font-family: sans-serif;
   display: inline-block;
-  border-radius: 10px;
-  background: #ccc;
-  position: relative;
-  padding: 30px;
+  border-radius: 3px;
+  padding: 14px;
   text-align: center;
-  vertical-align: top;
-  min-width: 23%;
-}
 
-.drag {
-  color: #fff;
-  cursor: move;
-  background: #777;
-  border-right: 2px solid #555;
-  border-bottom: 2px solid #555;
-}
-
-.drop {
   background: #eee;
-  border-top: 2px solid #ccc;
-  border-left: 2px solid #ccc;
+}
+
+.drop-main {
+  min-width: 31%;
 }
 
 /* Hide scrollbar for Chrome, Safari and Opera */

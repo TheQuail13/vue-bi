@@ -13,6 +13,7 @@ Vue.use(VueApexCharts)
 Vue.prototype.$sql = alasql;
 
 Vue.config.productionTip = false
+Vue.config.performance = true
 
 new Vue({
   render: h => h(App),

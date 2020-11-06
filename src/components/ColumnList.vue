@@ -6,7 +6,7 @@
     <q-virtual-scroll style="height: 36vh;" :items="columns">
       <template v-slot="{ item, index }">
         <drag style="cursor: move;" :transfer-data="{ item }">
-          <q-item :key="index" :class="[`bg-${color}`, 'text-white q-my-sm rounded-borders']">
+          <q-item :key="index" :class="[`bg-${item.ItemColor}`, 'text-white q-my-sm rounded-borders']">
             <q-item-section>
               <q-item-label>
                 <q-icon :name="getIcon(item.DataType)" class="q-mr-sm" />{{ item.Name }}
@@ -39,10 +39,6 @@ export default {
       type: Array,
       required: true,
       default: () => [],
-    },
-    color: {
-      type: String,
-      default: "green",
     },
   },
   methods: {
