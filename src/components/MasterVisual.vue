@@ -1,7 +1,7 @@
 <template>
   <q-page padding class="main-page">
     <div class="row justify-center q-col-gutter-md">
-      <div class="col-2">
+      <div id="first-col" class="col-2">
         <q-select
           outlined
           v-model="chartType"
@@ -45,7 +45,7 @@
           @click="showCalculatedField = true"
         />
       </div>
-      <div class="col-2">
+      <div id="middle-col" class="col-2">
         <drop
           :class="['full-width drop ', selectedFilterSeries.length > 0 ? 'bg-orange' : null]"
           @drop="handleColumnDrop('selectedFilterSeries', false, ...arguments)"
@@ -164,7 +164,7 @@
               </q-popup-edit>
             </q-item>
           </div>
-          <div class="col-3 ">
+          <div class="col-3">
             <drop
               class="bg-grey-4 series-drop"
               @drop="handleColumnDrop('selectedDataSeries', true, ...arguments)"
@@ -176,13 +176,17 @@
           </div>
         </div>
 
-        <apexchart
-          height="750"
-          width="100%"
-          :type="chartType.type"
-          :options="graphOptions"
-          :series="graphData"
-        />
+        <q-separator size="2px" class="q-my-md" />
+
+        <div style="height: 75vh; max-height: 75vh;">
+          <apexchart
+            height="100%"
+            width="100%"
+            :type="chartType.type"
+            :options="graphOptions"
+            :series="graphData"
+          />
+        </div>
       </div>
     </div>
 
@@ -681,15 +685,10 @@ export default {
 
 <style>
 .drop {
-  display: inline-block;
   border-radius: 3px;
   padding: 14px;
   text-align: center;
   background: #e0e0e0;
-}
-
-.drop-main {
-  min-width: 48%;
 }
 
 .series-drop {
@@ -707,5 +706,16 @@ export default {
 .q-virtual-scroll {
   -ms-overflow-style: none !important; /* IE and Edge */
   scrollbar-width: none !important; /* Firefox */
+}
+
+#first-col {
+  padding-right: 1em !important;
+}
+
+#middle-col {
+  padding-left: 1em !important;
+  padding-right: 1em !important;
+  border-left: 2px lightgrey solid;
+  border-right: 2px lightgrey solid;
 }
 </style>
