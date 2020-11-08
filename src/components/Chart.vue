@@ -13,7 +13,7 @@ export default {
     isLoading: {
       type: Boolean,
       required: false,
-      default: true,
+      default: false,
     },
     chartType: {
       type: String,

@@ -208,10 +208,10 @@
         @update="updateCalculatedField"
       />
     </q-dialog>
-    <!-- 
-    <q-inner-loading :showing="isLoading">
+
+    <q-inner-loading :showing="flatFileData.length === 0">
       <q-spinner-grid size="125px" color="primary" />
-    </q-inner-loading> -->
+    </q-inner-loading>
   </q-page>
 </template>
 
@@ -309,6 +309,7 @@ export default {
       return result.map((itm) => Object.values(itm)[0]).sort();
     },
     queryData(reprocess) {
+      console.time("queryTime");
       let filterClause;
       let filterCheck =
         this.selectedFilterSeries.length > 0 &&
@@ -398,8 +399,12 @@ export default {
         this.latestQuery = query;
         let qResults = this.$sql(query, [this.flatFileData]);
         console.log("Query results: ", qResults);
+        console.timeEnd("queryTime");
 
-        return this.groupSumBy(qResults, this.selectedXaxisDimension, this.selectedDataSeries);
+        console.time("queryTime2");
+        let toReturn = this.groupSumBy(qResults, this.selectedXaxisDimension, this.selectedDataSeries);
+        console.timeEnd("queryTime2");
+        return toReturn;
       } else {
         this.latestQuery = query;
         return false;
@@ -423,7 +428,6 @@ export default {
       });
     },
     parseFile() {
-      this.isLoading = true;
       XlsxParseWorker.send(this.file[0]);
     },
     processFileResults(headers, typeCheckData) {
@@ -519,7 +523,7 @@ export default {
               chart: {
                 id: "vuebi-chart",
                 animations: {
-                  enabled: true,
+                  enabled: false,
                 },
               },
               plotOptions: {
@@ -560,11 +564,12 @@ export default {
               },
               colors: this.baseColorPalette,
             };
-
+            console.time("finalProcessing");
             this.graphData = queryResults.map((itm, idx) => ({
               data: Object.values(itm),
               name: this.selectedDataSeries[idx].Label ?? this.selectedDataSeries[idx].Name,
             }));
+            console.timeEnd("finalProcessing");
           }
         }
 
@@ -668,7 +673,6 @@ export default {
         this.processFileResults(event.data.headers, event.data.typeCheckData);
         this.flatFileData = Object.freeze(event.data.fileData);
         this.selectInitialGraphData();
-        this.isLoading = false;
       }
     };
 
