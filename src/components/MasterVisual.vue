@@ -178,15 +178,12 @@
 
         <q-separator size="2px" class="q-my-md" />
 
-        <div style="height: 75vh; max-height: 75vh;">
-          <apexchart
-            height="100%"
-            width="100%"
-            :type="chartType.type"
-            :options="graphOptions"
-            :series="graphData"
-          />
-        </div>
+        <Chart
+          :is-loading="isLoading"
+          :chart-type="chartType.type"
+          :options="graphOptions"
+          :data="graphData"
+        />
       </div>
     </div>
 
@@ -211,16 +208,18 @@
         @update="updateCalculatedField"
       />
     </q-dialog>
-
+    <!-- 
     <q-inner-loading :showing="isLoading">
       <q-spinner-grid size="125px" color="primary" />
-    </q-inner-loading>
+    </q-inner-loading> -->
   </q-page>
 </template>
 
 <script>
 import CalculatedFieldEdit from "./CalculatedFieldEdit";
 import ColumnList from "./ColumnList";
+import Chart from "./Chart";
+
 import XlsxParseWorker from "@/xlsx-worker/index.js";
 import XlsxTableParseWorker from "@/xlsx-table-worker/index.js";
 import { date, format } from "quasar";
@@ -231,6 +230,7 @@ export default {
     DataTable: () => import("./DataTable"),
     CalculatedFieldEdit,
     ColumnList,
+    Chart,
   },
   props: {
     file: {
@@ -244,7 +244,7 @@ export default {
       baseColorPalette: ["#33b8ff", "#00E396", "#FEB019", "#FF4560", "#775DD0"],
       calculatedFieldToEdit: {},
       columns: [],
-      chartType: { name: "line", icon: "fas fa-chart-line", isCartesian: true },
+      chartType: { name: "line", type: "line", icon: "fas fa-chart-line", isCartesian: true },
       chartTypeOptions: [
         { name: "Line", type: "line", icon: "fas fa-chart-line", isCartesian: true },
         { name: "Area", type: "area", icon: "fas fa-chart-area", isCartesian: true },
