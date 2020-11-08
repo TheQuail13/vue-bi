@@ -164,7 +164,7 @@
               </q-popup-edit>
             </q-item>
           </div>
-          <div class="col-3">
+          <div class="col-3" v-if="isSeriesDropDisplayed">
             <drop
               class="bg-grey-4 series-drop"
               @drop="handleColumnDrop('selectedDataSeries', true, ...arguments)"
@@ -654,6 +654,12 @@ export default {
           .sort((a, b) => a.Name.localeCompare(b.Name));
       }
       return [];
+    },
+    isSeriesDropDisplayed() {
+      if (!this.chartType.isCartesian && this.selectedDataSeries.length > 0) {
+        return false;
+      }
+      return true;
     },
   },
   mounted() {
