@@ -241,7 +241,9 @@ export default {
   data() {
     return {
       aggOptions: ["sum", "count", "avg", "max", "min"],
+      baseColorPalette: ["#33b8ff", "#00E396", "#FEB019", "#FF4560", "#775DD0"],
       calculatedFieldToEdit: {},
+      columns: [],
       chartType: { name: "line", icon: "fas fa-chart-line", isCartesian: true },
       chartTypeOptions: [
         { name: "Line", type: "line", icon: "fas fa-chart-line", isCartesian: true },
@@ -254,8 +256,7 @@ export default {
         { name: "Radar", type: "radar", icon: "fas fa-chart-pie", isCartesian: false },
         { name: "Scatter", type: "scatter", icon: "fas fa-chart-pie", isCartesian: true },
       ],
-      baseColorPalette: ["#33b8ff", "#00E396", "#FEB019", "#FF4560", "#775DD0"],
-      columns: [],
+      colSearchTerm: "",
       filterOperators: [""],
       flatFileData: [],
       graphData: [
@@ -288,7 +289,7 @@ export default {
       },
       isLoading: false,
       latestQuery: "",
-      colSearchTerm: "",
+      previousChartType: {},
       selectedDataSeries: [],
       selectedFilterSeries: [],
       selectedSortSeries: [],
@@ -571,9 +572,9 @@ export default {
       }
     },
     setChartType(chart) {
-      if (this.chartType.name !== chart.name) {
-        this.chartType = chart;
-        if (!this.chartType.isCartesian) {
+      if (this.previousChartType.name !== chart.name) {
+        this.previousChartType = chart;
+        if (!chart.isCartesian) {
           this.selectedDataSeries.length = 1;
         }
         this.computeGraphData(true);
