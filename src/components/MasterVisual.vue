@@ -24,14 +24,7 @@
             </q-item>
           </template>
         </q-select>
-        <q-input
-          dense
-          v-model="colSearchTerm"
-          class="q-mt-md"
-          label="Search for a column"
-          standout="bg-info text-white"
-          clearable
-        />
+        <q-input dense v-model="colSearchTerm" class="q-mt-md" label="Search for a column" clearable filled />
         <column-list
           header="Dimensions"
           :columns="colDimensions"
@@ -46,11 +39,14 @@
         />
       </div>
       <div id="middle-col" class="col-2">
+        <q-item-label header class="text-center q-pb-xs q-pt-none">
+          <strong>Filter</strong>
+        </q-item-label>
         <drop
           :class="['full-width drop ', selectedFilterSeries.length > 0 ? 'bg-orange' : null]"
           @drop="handleColumnDrop('selectedFilterSeries', false, ...arguments)"
         >
-          Filter
+          Drop a column
         </drop>
         <q-virtual-scroll style="height: 25vh;" :items="selectedFilterSeries" separator>
           <template v-slot="{ item, index }">
@@ -58,8 +54,20 @@
               :key="index"
               style="cursor: pointer; border-radius: 3px;"
               :class="[`bg-${item.ItemColor}`, 'text-white q-my-sm']"
+              @mouseover="item.Filter.showRemoveIcon = true"
+              @mouseleave="item.Filter.showRemoveIcon = false"
             >
               <q-item-section>{{ item.Name }}</q-item-section>
+              <q-item-section side v-if="item.Filter.Value" class="text-white">{{
+                item.Filter.Operator
+              }}</q-item-section>
+              <q-item-section
+                side
+                v-if="item.Filter.showRemoveIcon"
+                @click="removeFromArray('selectedFilterSeries', index)"
+              >
+                <q-icon name="close" color="white" />
+              </q-item-section>
               <q-popup-edit v-model="item.IsEditing" @before-hide="computeGraphData(true)" anchor="top left">
                 <q-select
                   outlined
@@ -83,25 +91,29 @@
                   class="q-my-xs"
                 />
               </q-popup-edit>
-              <q-item-section side @click="removeFromArray('selectedFilterSeries', index)">
-                <q-icon name="close" color="white" />
-              </q-item-section>
             </q-item>
           </template>
         </q-virtual-scroll>
 
+        <q-separator size="2px" />
+
+        <q-item-label header class="text-center q-pb-xs q-pt-sm">
+          <strong>Sorting</strong>
+        </q-item-label>
         <drop
           :class="['full-width drop ', selectedSortSeries.length > 0 ? 'bg-orange' : null]"
           @drop="handleColumnDrop('selectedSortSeries', true, ...arguments)"
         >
-          Sort By
+          Drop a column
         </drop>
         <q-virtual-scroll style="height: 40vh;" :items="selectedSortSeries" separator>
           <template v-slot="{ item, index }">
             <q-item
               :key="index"
               style="cursor: pointer; border-radius: 3px;"
-              :class="[`bg-${item.ItemColor}`, 'text-white q-my-sm']"
+              :class="[`bg-${item.ItemColor}`, 'text-white q-my-xs']"
+              @mouseover="item.Sort.showRemoveIcon = true"
+              @mouseleave="item.Sort.showRemoveIcon = false"
             >
               <q-item-section>{{ item.Name }}</q-item-section>
               <q-popup-edit v-model="item.IsEditing" @before-hide="computeGraphData(true)">
@@ -121,14 +133,25 @@
                 />
               </q-popup-edit>
               <q-item-section side>
-                <q-icon name="close" @click="removeFromArray('selectedSortSeries', index)" color="white" />
+                <q-icon
+                  :name="item.Sort.Direction === 'asc' ? 'fas fa-sort-amount-up' : 'fas fa-sort-amount-down'"
+                  color="white"
+                  size="xs"
+                />
+              </q-item-section>
+              <q-item-section
+                side
+                v-if="item.Sort.showRemoveIcon"
+                @click="removeFromArray('selectedSortSeries', index)"
+              >
+                <q-icon name="close" color="white" />
               </q-item-section>
             </q-item>
           </template>
         </q-virtual-scroll>
       </div>
       <div class="col-8">
-        <div class="row q-mb-lg q-col-gutter-sm">
+        <div class="row q-mb-lg q-col-gutter-xs">
           <div class="col-3">
             <drop class="bg-grey-4 series-drop" @drop="handleXDrop">
               <q-item :class="['col-3 rounded-borders', `bg-${selectedXaxisDimension.ItemColor}`]">
@@ -141,10 +164,10 @@
           <div class="col-3" v-for="(itm, idx) in selectedDataSeries" :key="idx">
             <q-item style="cursor: pointer;" :class="[`bg-${itm.ItemColor}`, 'text-white rounded-borders']">
               <q-item-section>{{ itm.Name }}</q-item-section>
-              <q-item-section side>
-                <q-icon name="close" @click="removeFromArray('selectedDataSeries', idx)" color="white" />
+              <q-item-section side @click="removeFromArray('selectedDataSeries', idx)">
+                <q-icon name="close" color="white" />
               </q-item-section>
-              <q-popup-edit v-model="itm.IsEditing" @before-hide="computeGraphData(true)">
+              <q-popup-edit v-model="itm.IsEditing" @hide="computeGraphData(true)">
                 <q-select
                   outlined
                   v-model="itm.AggType"
@@ -461,16 +484,18 @@ export default {
           Color: null,
           DataType: type,
           Sort: {
+            showRemoveIcon: false,
             Direction: "asc",
             Aggregation: "none",
           },
           Filter: {
+            showRemoveIcon: false,
             Operator: "=",
             Value: "",
             SelectedValues: [],
           },
           AggType: type === "string" || type === "date" ? "count" : "sum",
-          ItemColor: type === "string" || type === "date" ? "primary" : "green",
+          ItemColor: this.getColorByDataType(type),
         };
       });
 
@@ -611,20 +636,28 @@ export default {
         Color: null,
         DataType: field.DataType,
         Sort: {
+          showRemoveIcon: false,
           Direction: "asc",
           Aggregation: "none",
         },
         Filter: {
+          showRemoveIcon: false,
           Operator: "=",
           Value: "",
           SelectedValues: [],
         },
         AggType: field.DataType === "string" || field.DataType === "date" ? "count" : "sum",
-        ItemColor: field.DataType === "string" || field.DataType === "date" ? "primary" : "green",
+        ItemColor: this.getColorByDataType(field.DataType),
       };
 
       this.columns.push(columnToAdd);
       this.$refs.cfEditor.hide();
+    },
+    getColorByDataType(type) {
+      if (type === "string" || type === "date") {
+        return "blue-6";
+      }
+      return "green-6";
     },
     updateCalculatedField(field) {
       const fieldIndex = this.columns.findIndex((x) => x.Name === field.Name);
@@ -720,13 +753,17 @@ export default {
 }
 
 #first-col {
-  padding-right: 1em !important;
+  padding-right: 1.5em !important;
 }
 
 #middle-col {
-  padding-left: 1em !important;
-  padding-right: 1em !important;
+  padding-left: 1.5em !important;
+  padding-right: 1.5em !important;
   border-left: 2px lightgrey solid;
   border-right: 2px lightgrey solid;
 }
+/* 
+.drop:hover {
+  border: 1px dashed;
+} */
 </style>
