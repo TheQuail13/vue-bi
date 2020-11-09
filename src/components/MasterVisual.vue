@@ -30,6 +30,9 @@
           :columns="colDimensions"
           @editcalculatedfield="editCalculatedField"
         />
+
+        <q-separator size="2px" />
+
         <column-list header="Values" :columns="colValues" @editcalculatedfield="editCalculatedField" />
         <q-btn
           color="orange"
@@ -150,7 +153,7 @@
           </template>
         </q-virtual-scroll>
       </div>
-      <div class="col-8">
+      <div id="third-col" class="col-8">
         <div class="row q-mb-lg q-col-gutter-xs">
           <div class="col-3">
             <drop class="bg-grey-4 series-drop" @drop="handleXDrop">
@@ -761,6 +764,10 @@ export default {
   padding-right: 1.5em !important;
   border-left: 2px lightgrey solid;
   border-right: 2px lightgrey solid;
+}
+
+#third-col {
+  padding-left: 1.5em !important;
 }
 /* 
 .drop:hover {
