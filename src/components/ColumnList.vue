@@ -8,9 +8,18 @@
         <drag style="cursor: move;" :transfer-data="{ item }">
           <q-item :key="index" :class="[`bg-${item.ItemColor}`, 'text-white q-my-xs rounded-borders']">
             <q-item-section>
-              <q-item-label>
+              <q-item-label class="ellipsis">
                 <q-icon :name="getIcon(item.DataType)" class="q-mr-sm" />{{ item.Name }}
               </q-item-label>
+              <q-tooltip
+                :delay="500"
+                anchor="center right"
+                self="center left"
+                :offset="[25, 25]"
+                :content-class="'text-h6'"
+              >
+                {{ item.Name }}
+              </q-tooltip>
             </q-item-section>
             <q-item-section v-if="item.IsCalculated" side>
               <q-icon
