@@ -11,15 +11,15 @@
               <q-item-label class="ellipsis">
                 <q-icon :name="getIcon(item.DataType)" class="q-mr-sm" />{{ item.Name }}
               </q-item-label>
-              <q-tooltip
-                :delay="500"
+              <!-- <q-tooltip
+                :delay="750"
                 anchor="center right"
                 self="center left"
                 :offset="[25, 25]"
                 :content-class="'text-h6'"
               >
                 {{ item.Name }}
-              </q-tooltip>
+              </q-tooltip> -->
             </q-item-section>
             <q-item-section v-if="item.IsCalculated" side>
               <q-icon

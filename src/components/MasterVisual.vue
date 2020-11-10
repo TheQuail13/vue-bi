@@ -363,96 +363,99 @@ export default {
       return result.map((itm) => Object.values(itm)[0]).sort();
     },
     constructQuery(reprocess) {
-      let filterClause;
-      let filterCheck =
-        this.selectedFilterSeries.length > 0 &&
-        (this.selectedFilterSeries[0].Filter.Value ||
-          this.selectedFilterSeries[0].Filter.SelectedValues.length > 0);
+      if (this.selectedXaxisDimension && this.selectedDataSeries.length > 0) {
+        this.isLoading = true;
+        let filterClause;
+        let filterCheck =
+          this.selectedFilterSeries.length > 0 &&
+          (this.selectedFilterSeries[0].Filter.Value ||
+            this.selectedFilterSeries[0].Filter.SelectedValues.length > 0);
 
-      // Generate the columns to aggregate in the select clause
-      let selectClause = this.selectedDataSeries
-        .map((itm) => {
-          if (!itm.IsCalculated) {
-            return `${itm.AggType}([${itm.Name}]) AS [${itm.Name}]`;
-          } else {
-            return `${itm.AggType}(${itm.CalculationDefinition}) AS [${itm.Name}]`;
-          }
-        })
-        .reduce((acc, obj) => `${acc}, ${obj}`);
-
-      // If any filters, generate the where clause
-      if (filterCheck) {
-        filterClause = this.selectedFilterSeries
+        // Generate the columns to aggregate in the select clause
+        let selectClause = this.selectedDataSeries
           .map((itm) => {
-            let colName;
-            let colValue;
-
             if (!itm.IsCalculated) {
-              colName = `${itm.DataType === "number" ? `[${itm.Name}]` : `LOWER([${itm.Name}])`}`;
+              return `${itm.AggType}([${itm.Name}]) AS [${itm.Name}]`;
             } else {
-              colName = itm.CalculationDefinition;
+              return `${itm.AggType}(${itm.CalculationDefinition}) AS [${itm.Name}]`;
             }
-
-            if (itm.DataType === "number") {
-              colValue = itm.Filter.Value;
-            } else {
-              if (itm.Filter.Operator === "like") {
-                colValue = `'%${itm.Filter.Value.toLowerCase()}%'`;
-              } else if (itm.Filter.Operator === "in") {
-                let inClause = itm.Filter.SelectedValues.reduce((acc, obj) => {
-                  if (!acc) {
-                    acc = `'${obj.toLowerCase()}'`;
-                  } else {
-                    acc = `${acc}, '${obj.toLowerCase()}'`;
-                  }
-                  return acc;
-                }, "");
-                colValue = `(${inClause})`;
-              } else {
-                colValue = `'${itm.Filter.Value.toLowerCase()}'`;
-              }
-            }
-
-            return `${colName} ${itm.Filter.Operator} ${colValue}`;
           })
-          .reduce((acc, obj) => {
-            if (!acc) {
-              acc = `WHERE ${obj}`;
-            } else {
-              acc = `${acc} AND ${obj}`;
-            }
-            return acc;
-          }, "");
-      }
+          .reduce((acc, obj) => `${acc}, ${obj}`);
 
-      // Generate the order by clause
-      const sortClause =
-        this.selectedSortSeries.length > 0
-          ? this.selectedSortSeries
-              .map((itm) => {
-                const sortCol =
-                  itm.Sort.Aggregation === "none"
-                    ? `[${itm.Name}]`
-                    : `${itm.Sort.Aggregation}([${itm.Name}])`;
+        // If any filters, generate the where clause
+        if (filterCheck) {
+          filterClause = this.selectedFilterSeries
+            .map((itm) => {
+              let colName;
+              let colValue;
 
-                return `${sortCol} ${itm.Sort.Direction}`;
-              })
-              .reduce((acc, obj) => `${acc}, ${obj}`)
-          : 1;
+              if (!itm.IsCalculated) {
+                colName = `${itm.DataType === "number" ? `[${itm.Name}]` : `LOWER([${itm.Name}])`}`;
+              } else {
+                colName = itm.CalculationDefinition;
+              }
 
-      // Compile executed query
-      const query = `SELECT [${this.selectedXaxisDimension.Name}], ${selectClause} FROM ? ${
-        filterCheck ? filterClause : ""
-      } GROUP BY [${this.selectedXaxisDimension.Name}] ORDER BY ${sortClause}`;
+              if (itm.DataType === "number") {
+                colValue = itm.Filter.Value;
+              } else {
+                if (itm.Filter.Operator === "like") {
+                  colValue = `'%${itm.Filter.Value.toLowerCase()}%'`;
+                } else if (itm.Filter.Operator === "in") {
+                  let inClause = itm.Filter.SelectedValues.reduce((acc, obj) => {
+                    if (!acc) {
+                      acc = `'${obj.toLowerCase()}'`;
+                    } else {
+                      acc = `${acc}, '${obj.toLowerCase()}'`;
+                    }
+                    return acc;
+                  }, "");
+                  colValue = `(${inClause})`;
+                } else {
+                  colValue = `'${itm.Filter.Value.toLowerCase()}'`;
+                }
+              }
 
-      console.log(query);
+              return `${colName} ${itm.Filter.Operator} ${colValue}`;
+            })
+            .reduce((acc, obj) => {
+              if (!acc) {
+                acc = `WHERE ${obj}`;
+              } else {
+                acc = `${acc} AND ${obj}`;
+              }
+              return acc;
+            }, "");
+        }
 
-      // If current query matches previous one, don't re-process
-      if (this.latestQuery !== query || reprocess) {
-        this.latestQuery = query;
-        QueryWorker.send({ query: query, data: this.flatFileData });
-      } else {
-        this.latestQuery = query;
+        // Generate the order by clause
+        const sortClause =
+          this.selectedSortSeries.length > 0
+            ? this.selectedSortSeries
+                .map((itm) => {
+                  const sortCol =
+                    itm.Sort.Aggregation === "none"
+                      ? `[${itm.Name}]`
+                      : `${itm.Sort.Aggregation}([${itm.Name}])`;
+
+                  return `${sortCol} ${itm.Sort.Direction}`;
+                })
+                .reduce((acc, obj) => `${acc}, ${obj}`)
+            : 1;
+
+        // Compile executed query
+        const query = `SELECT [${this.selectedXaxisDimension.Name}], ${selectClause} FROM ? ${
+          filterCheck ? filterClause : ""
+        } GROUP BY [${this.selectedXaxisDimension.Name}] ORDER BY ${sortClause}`;
+
+        console.log(query);
+
+        // If current query matches previous one, don't re-process
+        if (this.latestQuery !== query || reprocess) {
+          this.latestQuery = query;
+          QueryWorker.send({ query: query, data: this.flatFileData });
+        } else {
+          this.latestQuery = query;
+        }
       }
     },
     groupSumBy(inputArray, xProp, yProps) {
@@ -554,68 +557,63 @@ export default {
       }
     },
     computeGraphData(queryResults) {
-      if (this.selectedXaxisDimension && this.selectedDataSeries.length > 0) {
-        this.isLoading = true;
-
-        if (queryResults) {
-          if (!this.chartType.isCartesian) {
-            this.graphOptions = {
-              labels: Object.keys(queryResults[0]),
-            };
-            this.graphData = Object.values(queryResults[0]);
-          } else {
-            this.graphOptions = {
-              chart: {
-                id: "vuebi-chart",
-                animations: {
-                  enabled: false,
+      if (queryResults) {
+        if (!this.chartType.isCartesian) {
+          this.graphOptions = {
+            labels: Object.keys(queryResults[0]),
+          };
+          this.graphData = Object.values(queryResults[0]);
+        } else {
+          this.graphOptions = {
+            chart: {
+              id: "vuebi-chart",
+              animations: {
+                enabled: false,
+              },
+            },
+            plotOptions: {
+              bar: {
+                horizontal: this.chartType.name === "Horizontal Bar",
+                dataLabels: {
+                  position: "top",
                 },
               },
-              plotOptions: {
-                bar: {
-                  horizontal: this.chartType.name === "Horizontal Bar",
-                  dataLabels: {
-                    position: "top",
-                  },
-                },
+            },
+            xaxis: {
+              categories: Object.keys(queryResults[0]),
+              labels: {
+                show: true,
+                hideOverlappingLabels: true,
               },
-              xaxis: {
-                categories: Object.keys(queryResults[0]),
-                labels: {
-                  show: true,
-                  hideOverlappingLabels: true,
-                },
+            },
+            dataLabels: {
+              enabled: true,
+              offsetY: -8,
+              style: {
+                colors: ["#333"],
               },
-              dataLabels: {
+              background: {
                 enabled: true,
-                offsetY: -8,
-                style: {
-                  colors: ["#333"],
-                },
-                background: {
-                  enabled: true,
-                  padding: 3,
-                },
-                formatter(val) {
-                  return typeof val === "number" ? val.toLocaleString() : val;
-                },
+                padding: 3,
               },
-              tooltip: {
-                x: {
-                  // show: true,
-                  formatter: (x) => x.toLocaleString(),
-                },
+              formatter(val) {
+                return typeof val === "number" ? val.toLocaleString() : val;
               },
-              colors: this.baseColorPalette,
-            };
+            },
+            tooltip: {
+              x: {
+                // show: true,
+                formatter: (x) => x.toLocaleString(),
+              },
+            },
+            colors: this.baseColorPalette,
+          };
 
-            this.graphData = queryResults.map((itm, idx) => ({
-              data: Object.values(itm),
-              name: this.selectedDataSeries[idx].Label ?? this.selectedDataSeries[idx].Name,
-            }));
-          }
+          this.graphData = queryResults.map((itm, idx) => ({
+            data: Object.values(itm),
+            name: this.selectedDataSeries[idx].Label ?? this.selectedDataSeries[idx].Name,
+          }));
         }
-
         this.isLoading = false;
       }
     },
@@ -686,6 +684,28 @@ export default {
 
       this.$refs.cfEditor.hide();
     },
+    mountWorkers() {
+      XlsxParseWorker.worker.onmessage = (event) => {
+        if (event.data.fileData) {
+          this.processFileResults(event.data.headers, event.data.typeCheckData);
+          this.flatFileData = Object.freeze(event.data.fileData);
+          this.selectInitialGraphData();
+        }
+      };
+
+      XlsxTableParseWorker.worker.onmessage = (event) => {
+        if (event.data) {
+          this.tableData = event.data;
+        }
+      };
+
+      QueryWorker.worker.onmessage = (event) => {
+        if (event.data) {
+          const results = this.groupSumBy(event.data, this.selectedXaxisDimension, this.selectedDataSeries);
+          this.computeGraphData(results);
+        }
+      };
+    },
   },
   computed: {
     colDimensions() {
@@ -721,27 +741,9 @@ export default {
       return true;
     },
   },
+
   mounted() {
-    XlsxParseWorker.worker.onmessage = (event) => {
-      if (event.data.fileData) {
-        this.processFileResults(event.data.headers, event.data.typeCheckData);
-        this.flatFileData = Object.freeze(event.data.fileData);
-        this.selectInitialGraphData();
-      }
-    };
-
-    XlsxTableParseWorker.worker.onmessage = (event) => {
-      if (event.data) {
-        this.tableData = event.data;
-      }
-    };
-
-    QueryWorker.worker.onmessage = (event) => {
-      if (event.data) {
-        const results = this.groupSumBy(event.data, this.selectedXaxisDimension, this.selectedDataSeries);
-        this.computeGraphData(results);
-      }
-    };
+    this.mountWorkers();
   },
 
   destroyed() {
