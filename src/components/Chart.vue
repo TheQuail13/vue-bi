@@ -1,6 +1,13 @@
 <template>
   <div style="height: 75vh;">
-    <apexchart height="100%" width="100%" :type="chartType" :options="options" :series="data" />
+    <apexchart
+      ref="vuebiChart"
+      height="100%"
+      width="100%"
+      :type="chartType"
+      :options="options"
+      :series="data"
+    />
     <q-inner-loading :showing="isLoading">
       <q-spinner-grid size="125px" color="primary" />
     </q-inner-loading>
@@ -17,8 +24,8 @@ export default {
     },
     chartType: {
       type: String,
-      required: true,
-      default: () => {},
+      required: false,
+      default: "line",
     },
     options: {
       type: Object,

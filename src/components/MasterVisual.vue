@@ -227,12 +227,7 @@
 
         <q-separator size="2px" class="q-my-md" />
 
-        <Chart
-          :is-loading="isLoading"
-          :chart-type="chartType.type"
-          :options="graphOptions"
-          :data="graphData"
-        />
+        <Chart :is-loading="isLoading" :options="graphOptions" :data="graphData" />
       </div>
     </div>
 
@@ -298,7 +293,7 @@ export default {
       baseColorPalette: ["#33b8ff", "#00E396", "#FEB019", "#FF4560", "#775DD0"],
       calculatedFieldToEdit: {},
       columns: [],
-      chartType: { name: "line", type: "line", icon: "fas fa-chart-line", isCartesian: true },
+      chartType: { name: "Line", type: "line", icon: "fas fa-chart-line", isCartesian: true },
       chartTypeOptions: [
         { name: "Line", type: "line", icon: "fas fa-chart-line", isCartesian: true },
         { name: "Area", type: "area", icon: "fas fa-chart-area", isCartesian: true },
@@ -324,6 +319,7 @@ export default {
           animations: {
             enabled: false,
           },
+          type: "line",
         },
         xaxis: {
           categories: [],
@@ -375,7 +371,7 @@ export default {
         let selectClause = this.selectedDataSeries
           .map((itm) => {
             if (!itm.IsCalculated) {
-              return `${itm.AggType}([${itm.Name}]) AS [${itm.Name}]`;
+              return `${itm.AggType}([${itm.Name}]) AS [?${itm.Name}]`;
             } else {
               return `${itm.AggType}(${itm.CalculationDefinition}) AS [${itm.Name}]`;
             }
@@ -462,14 +458,15 @@ export default {
       return yProps.map((itm) => {
         return inputArray.reduce((accumulator, object) => {
           let key = object[xProp.Name];
+
           if (Object.prototype.toString.call(key) === "[object Date]") {
             key = date.formatDate(key, "YYYY-MM-DD");
           }
 
           if (!accumulator[key]) {
-            accumulator[key] = object[itm.Name];
+            accumulator[key] = object[`?${itm.Name}`];
           } else {
-            accumulator[key] += object[itm.Name];
+            accumulator[key] += object[`?${itm.Name}`];
           }
           return accumulator;
         }, {});
@@ -565,54 +562,54 @@ export default {
           this.graphData = Object.values(queryResults[0]);
         } else {
           this.graphOptions = {
-            chart: {
-              id: "vuebi-chart",
-              animations: {
-                enabled: false,
+            ...this.graphOptions,
+            ...{
+              chart: {
+                type: this.chartType.type,
               },
-            },
-            plotOptions: {
-              bar: {
-                horizontal: this.chartType.name === "Horizontal Bar",
-                dataLabels: {
-                  position: "top",
+              plotOptions: {
+                bar: {
+                  horizontal: this.chartType.name === "Horizontal Bar",
+                  dataLabels: {
+                    position: this.chartType.name === "Horizontal Bar" ? "right" : "top",
+                  },
                 },
               },
-            },
-            xaxis: {
-              categories: Object.keys(queryResults[0]),
-              labels: {
-                show: true,
-                hideOverlappingLabels: true,
+              xaxis: {
+                categories: Object.keys(queryResults[0]),
+                labels: {
+                  hideOverlappingLabels: true,
+                },
               },
-            },
-            dataLabels: {
-              enabled: true,
-              offsetY: -8,
-              style: {
-                colors: ["#333"],
-              },
-              background: {
+              dataLabels: {
                 enabled: true,
-                padding: 3,
+                offsetY: -8,
+                style: {
+                  colors: ["#333"],
+                },
+                background: {
+                  enabled: true,
+                  padding: 3,
+                },
+                formatter(val) {
+                  return typeof val === "number" ? val.toLocaleString() : val;
+                },
               },
-              formatter(val) {
-                return typeof val === "number" ? val.toLocaleString() : val;
+              tooltip: {
+                x: {
+                  // show: true,
+                  formatter: (x) => x.toLocaleString(),
+                },
               },
+              colors: this.baseColorPalette,
             },
-            tooltip: {
-              x: {
-                // show: true,
-                formatter: (x) => x.toLocaleString(),
-              },
-            },
-            colors: this.baseColorPalette,
           };
 
           this.graphData = queryResults.map((itm, idx) => ({
             data: Object.values(itm),
             name: this.selectedDataSeries[idx].Label ?? this.selectedDataSeries[idx].Name,
           }));
+          console.log(this.graphData);
         }
         this.isLoading = false;
       }
@@ -701,7 +698,9 @@ export default {
 
       QueryWorker.worker.onmessage = (event) => {
         if (event.data) {
+          console.log("event.data", event.data);
           const results = this.groupSumBy(event.data, this.selectedXaxisDimension, this.selectedDataSeries);
+          console.log("Results: ", results);
           this.computeGraphData(results);
         }
       };
