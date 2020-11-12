@@ -609,7 +609,6 @@ export default {
             data: Object.values(itm),
             name: this.selectedDataSeries[idx].Label ?? this.selectedDataSeries[idx].Name,
           }));
-          console.log(this.graphData);
         }
         this.isLoading = false;
       }
