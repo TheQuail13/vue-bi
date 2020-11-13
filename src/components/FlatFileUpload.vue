@@ -43,6 +43,8 @@ export default {
 }
 
 .drop:hover {
-  border: 3px dashed;
+  -webkit-box-shadow: 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+  -moz-box-shadow: 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+  box-shadow: 0 6px 20px 0 rgba(0, 0, 0, 0.19);
 }
 </style>

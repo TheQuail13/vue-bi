@@ -233,6 +233,10 @@
 
     <q-page-sticky position="bottom-right" :offset="[25, 25]">
       <q-btn fab icon="table_view" color="info" @click="parseDataForTable" />
+
+      <q-tooltip>
+        View raw data table
+      </q-tooltip>
     </q-page-sticky>
 
     <q-dialog v-model="showTable" full-width>
@@ -302,7 +306,7 @@ export default {
         { name: "Pie", type: "pie", icon: "fas fa-chart-pie", isCartesian: false },
         { name: "Donut", type: "donut", icon: "fas fa-chart-pie", isCartesian: false },
         { name: "PolarArea", type: "polarArea", icon: "fas fa-chart-pie", isCartesian: false },
-        { name: "Radar", type: "radar", icon: "fas fa-chart-pie", isCartesian: false },
+        // { name: "Radar", type: "radar", icon: "fas fa-chart-pie", isCartesian: false },
         { name: "Scatter", type: "scatter", icon: "fas fa-chart-pie", isCartesian: true },
       ],
       colSearchTerm: "",
@@ -557,8 +561,12 @@ export default {
       if (queryResults) {
         if (!this.chartType.isCartesian) {
           this.graphOptions = {
+            chart: {
+              type: this.chartType.type,
+            },
             labels: Object.keys(queryResults[0]),
           };
+          console.log(this.graphOptions);
           this.graphData = Object.values(queryResults[0]);
         } else {
           this.graphOptions = {
@@ -597,7 +605,6 @@ export default {
               },
               tooltip: {
                 x: {
-                  // show: true,
                   formatter: (x) => x.toLocaleString(),
                 },
               },
