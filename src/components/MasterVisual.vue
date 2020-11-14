@@ -70,7 +70,7 @@
               >
                 <q-icon name="close" color="white" />
               </q-item-section>
-              <q-popup-edit v-model="item.IsEditing" @before-hide="constructQuery(true)" anchor="top left">
+              <q-popup-edit v-model="item.IsEditing" @hide="constructQuery(true)" anchor="top left">
                 <q-select
                   outlined
                   v-model="item.Filter.Operator"
@@ -115,7 +115,7 @@
               @mouseleave="item.Sort.showRemoveIcon = false"
             >
               <q-item-section>{{ item.Name }}</q-item-section>
-              <q-popup-edit v-model="item.IsEditing" @before-hide="constructQuery(true)">
+              <q-popup-edit v-model="item.IsEditing" @hide="constructQuery(true)">
                 <q-select
                   outlined
                   v-model="item.Sort.Direction"
@@ -232,7 +232,7 @@
         <div class="row q-mb-sm">
           <div class="col-2 offset-10">
             <q-input v-model="selectedDateFilter.label" label="Date Filter" outlined readonly dense>
-              <q-popup-edit v-model="isDateEditing" anchor="top middle">
+              <q-popup-edit v-model="isDateEditing" anchor="top middle" @hide="constructQuery(true)">
                 <template v-slot:title>
                   <div>
                     Date Filter Options
@@ -397,7 +397,7 @@ export default {
     constructQuery(reprocess) {
       if (this.selectedXaxisDimension && this.selectedDataSeries.length > 0) {
         this.isLoading = true;
-        let filterClause;
+        let filterClause = "";
         let filterCheck =
           this.selectedFilterSeries.length > 0 &&
           (this.selectedFilterSeries[0].Filter.Value ||
@@ -460,6 +460,24 @@ export default {
         }
 
         // If a date filter is applied, generate additional where clause
+        if (this.selectedDateColumn && this.selectedDateFilter.label !== "All-Time") {
+          let dateFilter;
+          switch (this.selectedDateFilter.label) {
+            case "This Year":
+              dateFilter = "YEAR(NOW())";
+              break;
+            case "Last Year":
+              dateFilter = "YEAR(NOW()) - 1";
+              break;
+            default:
+              break;
+          }
+          if (filterClause.length > 0) {
+            filterClause = `${filterClause} AND YEAR([${this.selectedDateColumn.Name}]) = ${dateFilter}`;
+          } else {
+            filterClause = `WHERE YEAR([${this.selectedDateColumn.Name}]) = ${dateFilter}`;
+          }
+        }
 
         // Generate the order by clause
         const sortClause =
@@ -478,7 +496,7 @@ export default {
 
         // Compile executed query
         const query = `SELECT [${this.selectedXaxisDimension.Name}], ${selectClause} FROM ? ${
-          filterCheck ? filterClause : ""
+          filterClause.length > 0 ? filterClause : ""
         } GROUP BY [${this.selectedXaxisDimension.Name}] ORDER BY ${sortClause}`;
 
         console.log(query);
