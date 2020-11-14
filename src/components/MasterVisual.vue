@@ -2,11 +2,13 @@
   <q-page padding class="main-page">
     <div class="row justify-center q-col-gutter-md">
       <div id="first-col" class="col-2">
+        <q-item-label header class="text-center q-pb-xs q-pt-none">
+          <strong>Select a chart type</strong>
+        </q-item-label>
         <q-select
           outlined
           v-model="chartType"
           :options="chartTypeOptions"
-          label="Select a chart type"
           class="q-mb-lg"
           map-options
           option-label="name"
@@ -58,9 +60,9 @@
               @mouseleave="item.Filter.showRemoveIcon = false"
             >
               <q-item-section>{{ item.Name }}</q-item-section>
-              <q-item-section side v-if="item.Filter.Value" class="text-white">{{
-                item.Filter.Operator
-              }}</q-item-section>
+              <q-item-section side v-if="item.Filter.Value" class="text-white">
+                {{ item.Filter.Operator }}
+              </q-item-section>
               <q-item-section
                 side
                 v-if="item.Filter.showRemoveIcon"
@@ -227,6 +229,38 @@
 
         <q-separator size="2px" class="q-my-md" />
 
+        <div class="row q-mb-sm">
+          <div class="col-2 offset-10">
+            <q-input v-model="selectedDateFilter.label" label="Date Filter" outlined readonly dense>
+              <q-popup-edit v-model="isDateEditing" anchor="top middle">
+                <template v-slot:title>
+                  <div>
+                    Date Filter Options
+                  </div>
+                </template>
+                <q-select
+                  outlined
+                  dense
+                  v-model="selectedDateFilter"
+                  :options="dateFilterOptions"
+                  label="Time Frame"
+                  class="q-mb-sm"
+                />
+                <q-select
+                  outlined
+                  dense
+                  v-model="selectedDateColumn"
+                  :options="dateCols"
+                  label="Date Column"
+                  map-options
+                  :option-value="(opt) => (Object(opt) === opt && 'Name' in opt ? opt.Name : null)"
+                  :option-label="(opt) => (Object(opt) === opt && 'Name' in opt ? opt.Name : null)"
+                />
+              </q-popup-edit>
+            </q-input>
+          </div>
+        </div>
+
         <Chart :is-loading="isLoading" :options="graphOptions" :data="graphData" />
       </div>
     </div>
@@ -310,6 +344,12 @@ export default {
         { name: "Scatter", type: "scatter", icon: "fas fa-chart-pie", isCartesian: true },
       ],
       colSearchTerm: "",
+      dateFilterOptions: [
+        { label: "All-Time" },
+        { label: "This Year" },
+        { label: "Last Year" },
+        { label: "Custom" },
+      ],
       filterOperators: [""],
       flatFileData: [],
       graphData: [
@@ -325,22 +365,12 @@ export default {
           },
           type: "line",
         },
-        xaxis: {
-          categories: [],
-        },
-        yaxis: {
-          labels: {
-            formatter: (val) => {
-              return val.toLocaleString();
-            },
-          },
-        },
-        colors: ["#008FFB", "#00E396", "#FEB019", "#FF4560", "#775DD0"],
       },
       graphSortOptions: {
         column: "",
         type: "asc",
       },
+      isDateEditing: false,
       isLoading: false,
       latestQuery: "",
       previousChartType: {},
@@ -350,6 +380,8 @@ export default {
       showCalculatedField: false,
       showTable: false,
       tableData: [],
+      selectedDateColumn: null,
+      selectedDateFilter: { label: "All-Time" },
       selectedXaxisDimension: {},
     };
   },
@@ -377,7 +409,7 @@ export default {
             if (!itm.IsCalculated) {
               return `${itm.AggType}([${itm.Name}]) AS [?${itm.Name}]`;
             } else {
-              return `${itm.AggType}(${itm.CalculationDefinition}) AS [${itm.Name}]`;
+              return `${itm.AggType}(${itm.CalculationDefinition}) AS [?${itm.Name}]`;
             }
           })
           .reduce((acc, obj) => `${acc}, ${obj}`);
@@ -427,6 +459,8 @@ export default {
             }, "");
         }
 
+        // If a date filter is applied, generate additional where clause
+
         // Generate the order by clause
         const sortClause =
           this.selectedSortSeries.length > 0
@@ -434,8 +468,8 @@ export default {
                 .map((itm) => {
                   const sortCol =
                     itm.Sort.Aggregation === "none"
-                      ? `[${itm.Name}]`
-                      : `${itm.Sort.Aggregation}([${itm.Name}])`;
+                      ? `[?${itm.Name}]`
+                      : `${itm.Sort.Aggregation}([?${itm.Name}])`;
 
                   return `${sortCol} ${itm.Sort.Direction}`;
                 })
@@ -566,7 +600,6 @@ export default {
             },
             labels: Object.keys(queryResults[0]),
           };
-          console.log(this.graphOptions);
           this.graphData = Object.values(queryResults[0]);
         } else {
           this.graphOptions = {
@@ -587,6 +620,13 @@ export default {
                 categories: Object.keys(queryResults[0]),
                 labels: {
                   hideOverlappingLabels: true,
+                },
+              },
+              yaxis: {
+                labels: {
+                  formatter: (val) => {
+                    return val.toLocaleString();
+                  },
                 },
               },
               dataLabels: {
@@ -693,6 +733,7 @@ export default {
           this.processFileResults(event.data.headers, event.data.typeCheckData);
           this.flatFileData = Object.freeze(event.data.fileData);
           this.selectInitialGraphData();
+          XlsxParseWorker.worker.terminate();
         }
       };
 
@@ -704,9 +745,8 @@ export default {
 
       QueryWorker.worker.onmessage = (event) => {
         if (event.data) {
-          console.log("event.data", event.data);
+          console.log("Results:", event.data);
           const results = this.groupSumBy(event.data, this.selectedXaxisDimension, this.selectedDataSeries);
-          console.log("Results: ", results);
           this.computeGraphData(results);
         }
       };
@@ -744,6 +784,12 @@ export default {
         return false;
       }
       return true;
+    },
+    dateCols() {
+      if (this.columns.length > 0) {
+        return this.columns.filter((x) => x.DataType === "date").sort((a, b) => a.Name.localeCompare(b.Name));
+      }
+      return [];
     },
   },
 
