@@ -3,9 +3,10 @@ import XLSX from "xlsx";
 addEventListener('message', event => { 
     let file = event.data.message;
     let reader = new FileReader();
-
+    
     reader.onload = (e) => {
         let data = new Uint8Array(e.target.result);
+
         let workbook = XLSX.read(data, {
             type: "array",
             cellDates: true,
@@ -25,7 +26,7 @@ addEventListener('message', event => {
             defval: null,
         });
 
-        postMessage({ headers: fileHeaders, typeCheckData: typeCheckData, fileData: fileData})
+        postMessage({ headers: fileHeaders, typeCheckData: typeCheckData, fileData: fileData, fileName: file.name})
     };
     
     reader.readAsArrayBuffer(file);

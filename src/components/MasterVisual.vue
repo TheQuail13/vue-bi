@@ -2,6 +2,9 @@
   <q-page padding class="main-page">
     <div class="row justify-center q-col-gutter-md">
       <div id="first-col" class="col-2">
+        <q-item-label header class="text-center q-pt-none">
+          <strong>{{ fileName }}</strong>
+        </q-item-label>
         <q-input dense v-model="colSearchTerm" label="Search for a column" clearable filled />
         <column-list
           header="Dimensions"
@@ -16,7 +19,7 @@
           color="orange"
           label="Add Calculated Field"
           class="full-width q-mt-md"
-          @click="showCalculatedField = true"
+          @click="showCalculatedFieldEditor"
         />
         <q-btn
           outline
@@ -615,6 +618,10 @@ export default {
 
       this.columns = dataTypeArrCheck;
     },
+    showCalculatedFieldEditor() {
+      this.calculatedFieldToEdit = {};
+      this.showCalculatedField = true;
+    },
     selectInitialGraphData() {
       const xAxisIdx = this.getRandomInt(0, this.colDimensions.length);
       const dataSeriesIdx = this.getRandomInt(0, this.colValues.length);
@@ -776,6 +783,7 @@ export default {
       return "green-6";
     },
     updateCalculatedField(field) {
+      field.ItemColor = this.getColorByDataType(field.DataType);
       const fieldIndex = this.columns.findIndex((x) => x.Name === field.Name);
       this.$set(this.columns, fieldIndex, field);
 
@@ -786,6 +794,7 @@ export default {
         if (event.data.fileData) {
           this.processFileResults(event.data.headers, event.data.typeCheckData);
           this.flatFileData = Object.freeze(event.data.fileData);
+          this.fileName = event.data.fileName;
           this.selectInitialGraphData();
           XlsxParseWorker.worker.terminate();
         }

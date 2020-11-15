@@ -159,10 +159,9 @@ export default {
       // loop through each row of data to determine datatype
       let dataTypeArr = [];
       results.map((oRow, oIdx) => {
-        const dataType =
-          Object.prototype.toString.call(Object.values(oRow)[0]) === "[object Date]"
-            ? "date"
-            : typeof Object.values(oRow)[0];
+        const val = Object.values(oRow)[0];
+        const dataType = typeof val === "string" && new Date(val) && isNaN(val) ? "date" : typeof val;
+
         if (typeof dataTypeArr[oIdx] === "undefined") {
           dataTypeArr[oIdx] = [dataType];
         } else {
