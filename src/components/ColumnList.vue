@@ -3,7 +3,7 @@
     <q-item-label header class="text-center q-pb-xs">
       <strong>{{ header }}</strong>
     </q-item-label>
-    <q-virtual-scroll style="height: 36vh;" :items="columns">
+    <q-virtual-scroll style="height: 37vh;" :items="columns">
       <template v-slot="{ item, index }">
         <drag style="cursor: move;" :transfer-data="{ item }">
           <q-item :key="index" :class="[`bg-${item.ItemColor}`, 'text-white q-my-xs rounded-borders']">

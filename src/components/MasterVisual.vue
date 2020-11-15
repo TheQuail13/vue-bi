@@ -2,31 +2,7 @@
   <q-page padding class="main-page">
     <div class="row justify-center q-col-gutter-md">
       <div id="first-col" class="col-2">
-        <q-item-label header class="text-center q-pb-xs q-pt-none">
-          <strong>Select a chart type</strong>
-        </q-item-label>
-        <q-select
-          outlined
-          v-model="chartType"
-          :options="chartTypeOptions"
-          class="q-mb-lg"
-          map-options
-          option-label="name"
-          option-value="name"
-          @input="setChartType"
-        >
-          <template v-slot:option="scope">
-            <q-item v-bind="scope.itemProps" v-on="scope.itemEvents">
-              <q-item-section>
-                <q-item-label>{{ capitalize(scope.opt.name) }}</q-item-label>
-              </q-item-section>
-              <q-item-section side>
-                <q-icon :name="scope.opt.icon" />
-              </q-item-section>
-            </q-item>
-          </template>
-        </q-select>
-        <q-input dense v-model="colSearchTerm" class="q-mt-md" label="Search for a column" clearable filled />
+        <q-input dense v-model="colSearchTerm" label="Search for a column" clearable filled />
         <column-list
           header="Dimensions"
           :columns="colDimensions"
@@ -41,6 +17,13 @@
           label="Add Calculated Field"
           class="full-width q-mt-md"
           @click="showCalculatedField = true"
+        />
+        <q-btn
+          outline
+          color="primary"
+          label="View Data Table"
+          class="full-width q-mt-sm"
+          @click="parseDataForTable"
         />
       </div>
       <div id="middle-col" class="col-2">
@@ -230,7 +213,33 @@
         <q-separator size="2px" class="q-my-md" />
 
         <div class="row q-mb-sm">
-          <div class="col-2 offset-10">
+          <div class="col-2">
+            <q-select
+              v-model="chartType"
+              :options="chartTypeOptions"
+              label="Chart type"
+              label-color="primary"
+              outlined
+              dense
+              map-options
+              option-label="name"
+              option-value="name"
+              @input="setChartType"
+            >
+              <template v-slot:option="scope">
+                <q-item v-bind="scope.itemProps" v-on="scope.itemEvents">
+                  <q-item-section>
+                    <q-item-label>{{ capitalize(scope.opt.name) }}</q-item-label>
+                  </q-item-section>
+                  <q-item-section side>
+                    <q-icon :name="scope.opt.icon" />
+                  </q-item-section>
+                </q-item>
+              </template>
+            </q-select>
+          </div>
+
+          <div class="col-2 offset-8">
             <q-input v-model="selectedDateFilter.label" label="Date Filter" outlined readonly dense>
               <q-popup-edit v-model="isDateEditing" anchor="top middle" @hide="constructQuery(true)">
                 <template v-slot:title>
@@ -241,21 +250,47 @@
                 <q-select
                   outlined
                   dense
-                  v-model="selectedDateFilter"
-                  :options="dateFilterOptions"
-                  label="Time Frame"
-                  class="q-mb-sm"
-                />
-                <q-select
-                  outlined
-                  dense
-                  v-model="selectedDateColumn"
+                  v-model="selectedDateObject.column"
                   :options="dateCols"
                   label="Date Column"
                   map-options
                   :option-value="(opt) => (Object(opt) === opt && 'Name' in opt ? opt.Name : null)"
                   :option-label="(opt) => (Object(opt) === opt && 'Name' in opt ? opt.Name : null)"
                 />
+                <q-select
+                  outlined
+                  dense
+                  v-model="selectedDateObject.filter"
+                  :options="dateFilterOptions"
+                  label="Time Frame"
+                  class="q-my-sm"
+                />
+                <div v-show="selectedDateObject.filter === 'Custom'">
+                  <q-input
+                    v-model="selectedDateObject.startDate"
+                    label="Start Date"
+                    dense
+                    outlined
+                    class="q-mb-sm"
+                  >
+                    <template v-slot:append>
+                      <q-icon name="event" class="cursor-pointer">
+                        <q-popup-proxy ref="qDateProxy" transition-show="scale" transition-hide="scale">
+                          <q-date v-model="selectedDateObject.startDate" minimal v-close-popup> </q-date>
+                        </q-popup-proxy>
+                      </q-icon>
+                    </template>
+                  </q-input>
+                  <q-input v-model="selectedDateObject.endDate" label="End Date" dense outlined>
+                    <template v-slot:append>
+                      <q-icon name="event" class="cursor-pointer">
+                        <q-popup-proxy ref="qDateProxy" transition-show="scale" transition-hide="scale">
+                          <q-date v-model="selectedDateObject.endDate" minimal v-close-popup> </q-date>
+                        </q-popup-proxy>
+                      </q-icon>
+                    </template>
+                  </q-input>
+                </div>
               </q-popup-edit>
             </q-input>
           </div>
@@ -266,7 +301,7 @@
     </div>
 
     <q-page-sticky position="bottom-right" :offset="[25, 25]">
-      <q-btn fab icon="table_view" color="info" @click="parseDataForTable" />
+      <q-btn fab icon="fas fa-question" color="info" @click="parseDataForTable" />
 
       <q-tooltip>
         View raw data table
@@ -344,12 +379,7 @@ export default {
         { name: "Scatter", type: "scatter", icon: "fas fa-chart-pie", isCartesian: true },
       ],
       colSearchTerm: "",
-      dateFilterOptions: [
-        { label: "All-Time" },
-        { label: "This Year" },
-        { label: "Last Year" },
-        { label: "Custom" },
-      ],
+      dateFilterOptions: ["All-Time", "This Year", "Last Year", "Custom"],
       filterOperators: [""],
       flatFileData: [],
       graphData: [
@@ -380,8 +410,14 @@ export default {
       showCalculatedField: false,
       showTable: false,
       tableData: [],
+      selectedDateObject: {
+        filter: "All-Time",
+        column: null,
+        startDate: null,
+        endDate: null,
+      },
       selectedDateColumn: null,
-      selectedDateFilter: { label: "All-Time" },
+      selectedDateFilter: "All-Time",
       selectedXaxisDimension: {},
     };
   },
@@ -460,23 +496,23 @@ export default {
         }
 
         // If a date filter is applied, generate additional where clause
-        if (this.selectedDateColumn && this.selectedDateFilter.label !== "All-Time") {
-          let dateFilter;
-          switch (this.selectedDateFilter.label) {
+        if (this.selectedDateObject.column && this.selectedDateObject.filter !== "All-Time") {
+          let basefilter = filterClause.length === 0 ? "WHERE" : `${filterClause} AND `;
+          let dateFilter = "";
+          switch (this.selectedDateObject.filter) {
             case "This Year":
-              dateFilter = "YEAR(NOW())";
+              dateFilter = `${basefilter} YEAR([${this.selectedDateObject.column.Name}]) = YEAR(NOW())`;
               break;
             case "Last Year":
-              dateFilter = "YEAR(NOW()) - 1";
+              dateFilter = `${basefilter} YEAR([${this.selectedDateObject.column.Name}]) = YEAR(NOW()) - 1`;
               break;
-            default:
+            case "Custom":
+              if (this.selectedDateObject.startDate && this.selectedDateObject.endDate) {
+                dateFilter = `${basefilter} [${this.selectedDateObject.column.Name}] BETWEEN DATE('${this.selectedDateObject.startDate}') AND DATE('${this.selectedDateObject.endDate}')`;
+              }
               break;
           }
-          if (filterClause.length > 0) {
-            filterClause = `${filterClause} AND YEAR([${this.selectedDateColumn.Name}]) = ${dateFilter}`;
-          } else {
-            filterClause = `WHERE YEAR([${this.selectedDateColumn.Name}]) = ${dateFilter}`;
-          }
+          filterClause = dateFilter;
         }
 
         // Generate the order by clause
